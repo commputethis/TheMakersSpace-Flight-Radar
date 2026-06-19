@@ -427,6 +427,10 @@ void renderClock() {
   g->fillScreen(th.background);
 
   time_t now = time(nullptr);
+  // Apply DST if enabled
+  if (settings.observe_dst && isDST(now)) {
+    now += 3600;  // Add 1 hour for DST
+  }
   struct tm tm; localtime_r(&now, &tm);
 
   const char* days[7]    = {"SUN","MON","TUE","WED","THU","FRI","SAT"};
@@ -580,6 +584,7 @@ static String settingsValueStr(int row) {
     case 5: snprintf(buf, sizeof(buf), "%s", settings.demo_mode     ? "ON" : "OFF"); break;
     case 6: snprintf(buf, sizeof(buf), "%d", settings.brightness); break;
     case 7: snprintf(buf, sizeof(buf), "%s", settings.log_to_fs    ? "ON" : "OFF"); break;
+    case 8: snprintf(buf, sizeof(buf), "%s", settings.observe_dst ? "ON" : "OFF"); break;
     default: buf[0] = '\0';
   }
   return String(buf);
@@ -602,9 +607,9 @@ void renderSettingsOverlay() {
   g->setCursor(CX - 50, 70);
   g->print("SETTINGS");
 
-  const char* labels[8] = {
+  const char* labels[9] = {
     "Theme:", "Range:", "Units:", "Time:",
-    "Audio:", "Demo:",  "Bright:", "Log:"
+    "Audio:", "Demo:",  "Bright:", "Log:", "DST:" 
   };
   int y = 110;
   g->setTextSize(1);
@@ -639,6 +644,7 @@ void cycleSettingsRow(int row) {
       break;
     }
     case 7: settings.log_to_fs = !settings.log_to_fs; break;
+    case 8: settings.observe_dst = !settings.observe_dst; break;
   }
   saveSettings();
 }

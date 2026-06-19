@@ -411,6 +411,7 @@ static const char PORTAL_HTML[] PROGMEM = R"HTML(
  <label>Timezone hours from UTC (e.g. -5)</label>
  <input type="number" name="tz" value="{{TZ}}">
  <label><input type="checkbox" name="h24" {{H24}}> 24-hour format</label>
+ <label><input type="checkbox" name="dst" {{DST}}> Observe DST</label>
  <h2>Behavior</h2>
  <label>Min altitude filter (ft)</label>
  <input type="number" name="minalt" value="{{MINALT}}">
@@ -475,6 +476,7 @@ static String renderPortalPage() {
   html.replace("{{BRIGHT}}",     String(settings.brightness));
   html.replace("{{TZ}}",         String(settings.tz_offset_seconds / 3600));
   html.replace("{{H24}}",        chk(settings.use_24h));
+  html.replace("{{DST}}",        chk(settings.observe_dst));
   html.replace("{{MINALT}}",     String(settings.min_altitude_ft));
   html.replace("{{IDLE}}",       String(settings.idle_timeout_sec));
   html.replace("{{AUDIO}}",      chk(settings.audio_enabled));
@@ -502,6 +504,7 @@ void handlePortalSave() {
   if (webServer.hasArg("tz"))     settings.tz_offset_seconds = webServer.arg("tz").toInt() * 3600;
   // Checkboxes: absent argument == unchecked
   settings.use_24h        = webServer.hasArg("h24");
+  settings.observe_dst    = webServer.hasArg("dst");
   settings.audio_enabled  = webServer.hasArg("audio");
   settings.demo_mode      = webServer.hasArg("demo");
   settings.log_to_fs      = webServer.hasArg("log");

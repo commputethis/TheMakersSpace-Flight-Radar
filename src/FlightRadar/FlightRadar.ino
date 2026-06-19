@@ -103,6 +103,7 @@ struct Settings {
   float    home_lon;
   int32_t  tz_offset_seconds;
   bool     use_24h;
+  bool     observe_dst = true;   // true = add 1 hour when in DST period
   uint8_t  range_idx;            // 0..3 → 5/10/25/50
   uint8_t  unit_mode = 0;        // 0=NATIVE(nm/kt), 1=MILES(mi/mph), 2=KILOMETERS(km/kmh);
   uint8_t  theme_idx;
@@ -274,6 +275,7 @@ void loadSettings() {
   settings.home_lon          = prefs.getFloat("lon",    DEFAULT_LON);
   settings.tz_offset_seconds = prefs.getInt  ("tz",     -18000);  // EST
   settings.use_24h           = prefs.getBool ("h24",    false);
+  settings.observe_dst       = prefs.getBool("ovserve_dst", true);
   settings.range_idx         = prefs.getUChar("range",  2);       // 25 mi
   settings.unit_mode         = prefs.getUChar("unit_mode", 0);  // 0=native default
   settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN_PHOSPHOR);
@@ -292,20 +294,21 @@ void loadSettings() {
 
 void saveSettings() {
   prefs.begin     ("flightradar", false);
-  prefs.putFloat  ("lat",       settings.home_lat);
-  prefs.putFloat  ("lon",       settings.home_lon);
-  prefs.putInt    ("tz",        settings.tz_offset_seconds);
-  prefs.putBool   ("h24",       settings.use_24h);
-  prefs.putUChar  ("range",     settings.range_idx);
-  prefs.putUChar  ("unit_mode", settings.unit_mode);
-  prefs.putUChar  ("theme",     settings.theme_idx);
-  prefs.putUChar  ("bright",    settings.brightness);
-  prefs.putInt    ("minalt",    settings.min_altitude_ft);
-  prefs.putBool   ("audio",     settings.audio_enabled);
-  prefs.putBool   ("demo",      settings.demo_mode);
-  prefs.putBool   ("log",       settings.log_to_fs);
-  prefs.putUInt   ("idle",      settings.idle_timeout_sec);
-  prefs.putString ("otapw",     settings.ota_password);
+  prefs.putFloat  ("lat",         settings.home_lat);
+  prefs.putFloat  ("lon",         settings.home_lon);
+  prefs.putInt    ("tz",          settings.tz_offset_seconds);
+  prefs.putBool   ("h24",         settings.use_24h);
+  prefs.putBool   ("observe_dst", settings.observe_dst);
+  prefs.putUChar  ("range",       settings.range_idx);
+  prefs.putUChar  ("unit_mode",   settings.unit_mode);
+  prefs.putUChar  ("theme",       settings.theme_idx);
+  prefs.putUChar  ("bright",      settings.brightness);
+  prefs.putInt    ("minalt",      settings.min_altitude_ft);
+  prefs.putBool   ("audio",       settings.audio_enabled);
+  prefs.putBool   ("demo",        settings.demo_mode);
+  prefs.putBool   ("log",         settings.log_to_fs);
+  prefs.putUInt   ("idle",        settings.idle_timeout_sec);
+  prefs.putString ("otapw",       settings.ota_password);
   prefs.end();
 }
 
@@ -587,6 +590,40 @@ void syncRtcFromSystem() {
   struct tm t;
   localtime_r(&now, &t);
   rtcWrite(&t);
+}
+
+// Returns true if DST is in effect for the given time
+bool isDST(time_t t) {
+  if (!settings.observe_dst) return false;
+  
+  struct tm* timeinfo = localtime(&t);
+  int month = timeinfo->tm_mon + 1;  // 1-12
+  int day = timeinfo->tm_mday;
+  int wday = timeinfo->tm_wday;      // 0=Sunday
+  
+  // US DST: Second Sunday March to First Sunday November
+  if (month < 3 || month > 11) return false;  // Jan, Feb, Dec
+  if (month > 3 && month < 11) return true;     // Apr-Oct
+  
+  // March: DST starts second Sunday
+  if (month == 3) {
+    int secondSunday = 8 + (7 - ((1 + 8) % 7)) % 7;  // Day of month for 2nd Sunday
+    if (day < secondSunday) return false;
+    if (day > secondSunday) return true;
+    // On transition day, check hour (assume 2 AM)
+    return timeinfo->tm_hour >= 2;
+  }
+  
+  // November: DST ends first Sunday
+  if (month == 11) {
+    int firstSunday = 1 + (7 - ((1 + 1) % 7)) % 7;  // Day of month for 1st Sunday
+    if (day < firstSunday) return true;
+    if (day > firstSunday) return false;
+    // On transition day, check hour (assume 2 AM)
+    return timeinfo->tm_hour < 2;
+  }
+  
+  return false;
 }
 
 // ---- Audio (I2S → PCM5101 DAC → speaker) -----------------------
@@ -1432,6 +1469,10 @@ void renderClock() {
   g->fillScreen(th.background);
 
   time_t now = time(nullptr);
+  // Apply DST if enabled
+  if (settings.observe_dst && isDST(now)) {
+    now += 3600;  // Add 1 hour for DST
+  }
   struct tm tm; localtime_r(&now, &tm);
 
   const char* days[7]    = {"SUN","MON","TUE","WED","THU","FRI","SAT"};
@@ -1585,6 +1626,7 @@ static String settingsValueStr(int row) {
     case 5: snprintf(buf, sizeof(buf), "%s", settings.demo_mode     ? "ON" : "OFF"); break;
     case 6: snprintf(buf, sizeof(buf), "%d", settings.brightness); break;
     case 7: snprintf(buf, sizeof(buf), "%s", settings.log_to_fs    ? "ON" : "OFF"); break;
+    case 8: snprintf(buf, sizeof(buf), "%s", settings.observe_dst ? "ON" : "OFF"); break;
     default: buf[0] = '\0';
   }
   return String(buf);
@@ -1607,9 +1649,9 @@ void renderSettingsOverlay() {
   g->setCursor(CX - 50, 70);
   g->print("SETTINGS");
 
-  const char* labels[8] = {
+  const char* labels[9] = {
     "Theme:", "Range:", "Units:", "Time:",
-    "Audio:", "Demo:",  "Bright:", "Log:"
+    "Audio:", "Demo:",  "Bright:", "Log:", "DST:" 
   };
   int y = 110;
   g->setTextSize(1);
@@ -1644,6 +1686,7 @@ void cycleSettingsRow(int row) {
       break;
     }
     case 7: settings.log_to_fs = !settings.log_to_fs; break;
+    case 8: settings.observe_dst = !settings.observe_dst; break;
   }
   saveSettings();
 }
@@ -2133,6 +2176,7 @@ static const char PORTAL_HTML[] PROGMEM = R"HTML(
  <label>Timezone hours from UTC (e.g. -5)</label>
  <input type="number" name="tz" value="{{TZ}}">
  <label><input type="checkbox" name="h24" {{H24}}> 24-hour format</label>
+ <label><input type="checkbox" name="dst" {{DST}}> Observe DST</label>
  <h2>Behavior</h2>
  <label>Min altitude filter (ft)</label>
  <input type="number" name="minalt" value="{{MINALT}}">
@@ -2197,6 +2241,7 @@ static String renderPortalPage() {
   html.replace("{{BRIGHT}}",     String(settings.brightness));
   html.replace("{{TZ}}",         String(settings.tz_offset_seconds / 3600));
   html.replace("{{H24}}",        chk(settings.use_24h));
+  html.replace("{{DST}}",        chk(settings.observe_dst));
   html.replace("{{MINALT}}",     String(settings.min_altitude_ft));
   html.replace("{{IDLE}}",       String(settings.idle_timeout_sec));
   html.replace("{{AUDIO}}",      chk(settings.audio_enabled));
@@ -2224,6 +2269,7 @@ void handlePortalSave() {
   if (webServer.hasArg("tz"))     settings.tz_offset_seconds = webServer.arg("tz").toInt() * 3600;
   // Checkboxes: absent argument == unchecked
   settings.use_24h        = webServer.hasArg("h24");
+  settings.observe_dst    = webServer.hasArg("dst");
   settings.audio_enabled  = webServer.hasArg("audio");
   settings.demo_mode      = webServer.hasArg("demo");
   settings.log_to_fs      = webServer.hasArg("log");
