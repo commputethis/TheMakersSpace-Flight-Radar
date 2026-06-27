@@ -50,6 +50,7 @@
 #include "board_config.h"
 #include "themes.h"
 #include "aircraft_types.h"
+#include "font_config.h"
 
 #include "SensorQMI8658.hpp"      // From SensorLib (Lewis He)
 
@@ -362,6 +363,19 @@ void initDisplay() {
 void setBrightness(uint8_t b) {
   if (b < BRIGHTNESS_MIN) b = BRIGHTNESS_MIN;
   ledcWrite(LCD_BL_PIN, b);
+}
+
+void PWR_Loop(void) {
+  static uint16_t pressTime = 0;
+  
+  if(!digitalRead(PWR_KEY_Input_PIN)) {  // Button pressed
+    pressTime++;
+    if(pressTime >= 200) {  // 20 seconds = shutdown
+      digitalWrite(PWR_Control_PIN, LOW);  // Power off
+    }
+  } else {
+    pressTime = 0;
+  }
 }
 
 // ================================================================
@@ -1129,6 +1143,20 @@ void advanceSweep() {
   xSemaphoreGive(aircraftMutex);
 }
 
+// Draw WiFi icon at (x,y) - simple arcs representing signal waves
+void drawWiFiIcon(Arduino_GFX* g, int16_t x, int16_t y, uint16_t color, bool strong) {
+  // Draw dot at bottom
+  g->fillCircle(x, y + 8, 2, color);
+
+  // Arcs above the dot (opening upward like a rainbow)
+  // Arc angles: 225° to 315° draws the upper semicircle
+  g->drawArc(x, y + 8, 5, 3, 225, 315, color);   // inner arc
+  
+  if (strong) {
+    g->drawArc(x, y + 8, 9, 7, 225, 315, color); // outer arc for strong signal
+  }
+}
+
 // ================================================================
 //                  Aircraft Color & Icon
 // ================================================================
@@ -1217,10 +1245,10 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   const RadarTheme& th = currentTheme();
 
   // Aircraft count badge (left)
-  g->setTextSize(1);
-  g->setTextColor(th.textPrimary);
-  g->setCursor(70, 28);
-  g->printf("AC:%d", (int)stats.aircraft_in_range_now);
+//  g->setTextSize(TXT_SMALL);
+//  g->setTextColor(th.textPrimary);
+//  g->setCursor(80, 28);
+//  g->printf("AC:%d", (int)stats.aircraft_in_range_now);
 
   // Range label (center)
   char rngBuf[16];
@@ -1231,16 +1259,17 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   g->setCursor(tx, 28);
   g->print(rngBuf);
 
-  // WiFi indicator (right)
+  // WiFi indicator (right) - replace text with icon
   int rssi = WiFi.RSSI();
-  uint16_t wcolor; const char* wlabel;
-  if      (apMode)         { wcolor = th.squawk7600; wlabel = "AP";   }
-  else if (!wifiConnected) { wcolor = th.squawk7700; wlabel = "--";   }
-  else if (rssi > -70)     { wcolor = th.battHigh;   wlabel = "WiFi"; }
-  else                     { wcolor = th.battMid;    wlabel = "WiFi"; }
-  g->setTextColor(wcolor);
-  g->setCursor(LCD_WIDTH - 100, 28);
-  g->print(wlabel);
+  uint16_t wcolor;
+  bool strongSignal = false;
+  
+  if      (apMode)         { wcolor = th.squawk7600; }
+  else if (!wifiConnected) { wcolor = th.squawk7700; }
+  else if (rssi > -70)     { wcolor = th.battHigh; strongSignal = true; }
+  else                     { wcolor = th.battMid; }
+  
+  drawWiFiIcon(g, LCD_WIDTH - 125, 28, wcolor, strongSignal);
 }
 
 // Battery indicator near the bottom of the screen.
@@ -1248,8 +1277,8 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
 // checked to confirm which pin reads the battery divider).
 static void drawBatteryIndicator(Arduino_GFX* g) {
   if (BATT_ADC_PIN < 0) return;
-  int raw = analogRead(BATT_ADC_PIN);
-  float v = (raw / 4095.0f) * 3.3f * BATT_DIVIDER;
+  int raw = analogReadMilliVolts(BATT_ADC_PIN);
+  float v = (raw * 3.0 / 1000.0) / Measurement_offset;
   // Crude linear map: 4.2 V = 100 %, 3.3 V = 0 %
   int pct = (int)((v - 3.3f) / 0.9f * 100.0f);
   if (pct < 0)   pct = 0;
@@ -1285,7 +1314,7 @@ void renderRadar() {
   g->drawLine(CX, CY - RADAR_RADIUS, CX, CY + RADAR_RADIUS, th.crosshair);
 
   // ── Compass labels ──────────────────────────────────────────
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.compassRose);
   g->setCursor(CX - 5,                 CY - RADAR_RADIUS - 22); g->print("N");
   g->setCursor(CX - 5,                 CY + RADAR_RADIUS + 6);  g->print("S");
@@ -1293,7 +1322,7 @@ void renderRadar() {
   g->setCursor(CX + RADAR_RADIUS + 6,  CY - 7);                 g->print("E");
 
   // ── Range scale labels on each ring ─────────────────────────
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   int maxR = currentRangeUnits();
   for (int i = 1; i <= 4; ++i) {
@@ -1337,7 +1366,7 @@ void renderRadar() {
 
       // Callsign label (only when blip is bright enough to read)
       if (a.callsign[0] && a.intensity > 80) {
-        g->setTextSize(1);
+        g->setTextSize(TXT_SMALL);
         g->setTextColor(fadeColor(th.textSecondary, a.intensity));
         g->setCursor(x + 6, y - 6);
         g->print(a.callsign);
@@ -1347,7 +1376,7 @@ void renderRadar() {
   }
 
   drawTopStatusStrip(g);
-  drawBatteryIndicator(g);
+//  drawBatteryIndicator(g);
 
   flushFrame();
 }
@@ -1368,7 +1397,7 @@ void renderFlightDetail() {
   g->drawCircle(CX, CY, LCD_RADIUS - 7, th.panelBorder);
 
   if (selectedAircraft < 0 || selectedAircraft >= aircraftCount) {
-    g->setTextSize(2);
+    g->setTextSize(TXT_MEDIUM);
     g->setTextColor(th.textPrimary);
     g->setCursor(CX - 70, CY - 8);
     g->print("No flight");
@@ -1383,6 +1412,13 @@ void renderFlightDetail() {
     xSemaphoreGive(aircraftMutex);
   } else {
     return;
+  }
+
+  const AircraftType* t2 = lookupAircraftType(a.type);
+  if (!t2) {
+    Serial.printf("Lookup failed for type: '%s' (len=%d) hex:", a.type, strlen(a.type));
+    for (int i = 0; i < 5; i++) Serial.printf(" %02X", (unsigned char)a.type[i]);
+    Serial.println();
   }
 
   // Resolve ICAO type → human name from the PROGMEM table
@@ -1418,19 +1454,19 @@ void renderFlightDetail() {
   }
 
   int y = 80;
-  g->setTextSize(3);
+  g->setTextSize(TXT_LARGE);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 75, y);
   g->print(a.callsign[0] ? a.callsign : "------");
 
   y += 40;
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 90, y);
   g->printf("%s  %s", a.type, typeName);
 
   y += 24;
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 90, y); g->printf("ALT: %ld ft", (long)a.altitude_ft);
   y += 26;
@@ -1452,10 +1488,10 @@ void renderFlightDetail() {
     g->setCursor(CX - 90, y); g->printf("SQK: %s", a.squawk);
   }
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   g->setCursor(CX - 75, LCD_HEIGHT - 30);
-  g->print("Swipe right to go back");
+//  g->print("Swipe right to go back");
 
   flushFrame();
 }
@@ -1479,7 +1515,7 @@ void renderClock() {
   const char* months[12] = {"JAN","FEB","MAR","APR","MAY","JUN",
                             "JUL","AUG","SEP","OCT","NOV","DEC"};
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.clockDate);
   g->setCursor(CX - 18, 90);
   g->print(days[tm.tm_wday]);
@@ -1492,13 +1528,13 @@ void renderClock() {
     int h = tm.tm_hour % 12; if (h == 0) h = 12;
     snprintf(timeBuf, sizeof(timeBuf), "%2d:%02d", h, tm.tm_min);
   }
-  g->setTextSize(7);
+  g->setTextSize(TXT_XXLARGE);
   g->setTextColor(th.clockFace);
   g->setCursor(CX - 105, CY - 28);
   g->print(timeBuf);
 
   // Seconds (smaller, right of minutes)
-  g->setTextSize(3);
+  g->setTextSize(TXT_LARGE);
   g->setTextColor(th.clockSecond);
   g->setCursor(CX + 108, CY + 18);
   char secBuf[4]; snprintf(secBuf, sizeof(secBuf), "%02d", tm.tm_sec);
@@ -1506,7 +1542,7 @@ void renderClock() {
 
   // AM/PM in 12-hour mode
   if (!settings.use_24h) {
-    g->setTextSize(2);
+    g->setTextSize(TXT_MEDIUM);
     g->setTextColor(th.clockSecond);
     g->setCursor(CX + 108, CY - 28);
     g->print(tm.tm_hour < 12 ? "AM" : "PM");
@@ -1516,15 +1552,15 @@ void renderClock() {
   char dateBuf[24];
   snprintf(dateBuf, sizeof(dateBuf), "%s %d  %d",
            months[tm.tm_mon], tm.tm_mday, tm.tm_year + 1900);
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.clockDate);
   g->setCursor(CX - 80, CY + 60);
   g->print(dateBuf);
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   g->setCursor(CX - 75, LCD_HEIGHT - 30);
-  g->print("Swipe right to go back");
+//  g->print("Swipe right to go back");
 
   drawBatteryIndicator(g);
   flushFrame();
@@ -1538,13 +1574,13 @@ void renderStats() {
   const RadarTheme& th = currentTheme();
   g->fillScreen(th.background);
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 50, 70);
   g->print("STATS");
 
   int y = 110;
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 90, y);
   g->printf("Seen total:   %lu", (unsigned long)stats.aircraft_seen_total);
@@ -1592,9 +1628,9 @@ void renderStats() {
             (unsigned long)(uptimeSec / 3600),
             (unsigned long)((uptimeSec / 60) % 60));
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setCursor(CX - 75, LCD_HEIGHT - 30);
-  g->print("Swipe right to go back");
+//  g->print("Swipe right to go back");
 
   flushFrame();
 }
@@ -1644,28 +1680,30 @@ void renderSettingsOverlay() {
   g->fillScreen(th.background);
   g->drawCircle(CX, CY, LCD_RADIUS - 6, th.panelBorder);
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 50, 70);
+  g->setCursor(CX - 60, 60);
   g->print("SETTINGS");
 
   const char* labels[9] = {
     "Theme:", "Range:", "Units:", "Time:",
     "Audio:", "Demo:",  "Bright:", "Log:", "DST:" 
   };
-  int y = 110;
-  g->setTextSize(1);
+  int y = 100;
+  g->setTextSize(TXT_SMALL);
   for (int i = 0; i < 8; ++i) {
     g->setTextColor(th.textSecondary);
-    g->setCursor(CX - 80, y); g->print(labels[i]);
+    g->setCursor(CX - 120, y); g->print(labels[i]);
     g->setTextColor(th.textPrimary);
-    g->setCursor(CX - 10, y); g->print(settingsValueStr(i));
-    y += 18;
+    g->setCursor(CX - 20, y); g->print(settingsValueStr(i));
+    y += 30;
   }
 
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 100, LCD_HEIGHT - 30);
-  g->print("Tap row to change   Swipe \xc3\xa2\xc2\x86\xc2\x92 exit");
+  g->setCursor(CX - 100, LCD_HEIGHT - 60);
+  g->print("Tap row to change");
+  g->setCursor(CX - 100, LCD_HEIGHT - 40);
+  g->print("Swipe right to exit");
   flushFrame();
 }
 
@@ -1703,33 +1741,33 @@ void renderApMode() {
   g->fillScreen(th.background);
   g->drawCircle(CX, CY, LCD_RADIUS - 6, th.panelBorder);
 
-  g->setTextSize(3);
+  g->setTextSize(TXT_LARGE);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 65, 90);
   g->print("SETUP");
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 100, 150);
   g->print("Connect WiFi to:");
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   int16_t sx = CX - ((int16_t)apSsid.length() * 12) / 2;
   g->setCursor(sx, 175);
   g->print(apSsid);
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 95, 215);
   g->print("Then open a browser at:");
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 80, 240);
   g->print("192.168.4.1");
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   g->setCursor(CX - 110, LCD_HEIGHT - 50);
   g->print("Portal stays open for 5 min");
@@ -2106,7 +2144,7 @@ void initOTA() {
   ArduinoOTA.onStart([]() {
     if (!gfx) return;
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(3);
+    gfx->setTextSize(TXT_LARGE);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 80, CY - 10);
     gfx->print("OTA...");
@@ -2121,7 +2159,7 @@ void initOTA() {
   ArduinoOTA.onEnd([]() {
     if (!gfx) return;
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(2);
+    gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 60, CY - 8);
     gfx->print("Updated!");
@@ -2140,23 +2178,104 @@ void initOTA() {
 // IP). The page renders the current settings, lets you change them,
 // and saves to NVS.  PORTAL_HTML lives in flash to keep RAM free.
 // ================================================================
+const char THEME_GREEN_CSS[] PROGMEM = R"rawliteral(
+  :root {
+    --bg: #0a0f0a;
+    --fg: #33ff33;
+    --accent: #1a331a;
+    --input-bg: #0f1a0f;
+    --input-border: #33ff33;
+    --button-bg: #33ff33;
+    --button-fg: #0a0f0a;
+    --link: #66ff66;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15),
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+)rawliteral";
+
+const char THEME_AMBER_CSS[] PROGMEM = R"rawliteral(
+  :root {
+    --bg: #1a0f00;
+    --fg: #ffb000;
+    --accent: #331a00;
+    --input-bg: #1a0f00;
+    --input-border: #ffb000;
+    --button-bg: #ffb000;
+    --button-fg: #1a0f00;
+    --link: #ffcc33;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15),
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+)rawliteral";
+
 static const char PORTAL_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FlightRadar</title>
 <style>
- body{font-family:system-ui,sans-serif;background:#111;color:#dfd;
-      max-width:520px;margin:0 auto;padding:14px}
- h1{color:#7f7;margin:0 0 8px}
- h2{color:#5d5;margin-top:18px;font-size:1.05em}
+ {{THEME_CSS}}
+ body{
+   font-family:'Courier New', monospace;
+   background:var(--bg);
+   color: var(--fg);
+   max-width:520px;
+   margin:0 auto;
+   padding:14px }
+ h1 {
+   color:var(--fg);
+   text-shadow: 0 0 5px var(--fg);
+   margin:0 0 8px}
+ h2 {
+   color:var(--fg);
+   margin-top:18px;
+   text-shadow: 0 0 5px var(--fg);
+   font-size:1.05em}
  label{display:block;margin-top:10px;font-size:.9em;color:#bdb}
- input,select{width:100%;background:#222;border:1px solid #353;color:#dfd;
-              padding:6px;border-radius:4px;box-sizing:border-box}
+ input,select {
+   width:100%;
+   background: var(--input-bg);
+   border: 1px solid var(--input-border);
+   color: var(--fg);
+   padding:6px;
+   border-radius:4px;
+   box-sizing:border-box }
  input[type=checkbox]{width:auto}
- button{background:#272;border:1px solid #5a5;color:#dfd;padding:9px 14px;
-        margin-top:14px;border-radius:4px;font-size:1em;cursor:pointer}
+ button{
+   background: var(--button-bg);
+   border: 1px solid var(--input-border);
+   color: var(--button-fg);
+   padding: 9px 14px;
+   margin-top: 14px;
+   border-radius: 4px;
+   font-size: 1em;
+   cursor: pointer}
  .row{display:flex;gap:8px} .row>div{flex:1}
- small{color:#7a7}
+ small {color:var(--fg)}
+ a { color: var(--link) }
 </style></head><body>
 <h1>FlightRadar</h1>
 <small>{{HOSTNAME}} &middot; IP {{IP}} &middot; uptime {{UPT}}</small>
@@ -2229,6 +2348,10 @@ static String renderPortalPage() {
   char uptBuf[24];
   snprintf(uptBuf, sizeof(uptBuf), "%luh %lum",
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60));
+
+  // Theme CSS - 0=Green Phosphor, 1=Amber CRT
+  const char* themeCss = (settings.theme_idx == 1) ? THEME_AMBER_CSS : THEME_GREEN_CSS;
+  html.replace("{{THEME_CSS}}",  themeCss);
 
   html.replace("{{HOSTNAME}}",   String(MDNS_HOSTNAME) + ".local");
   html.replace("{{IP}}",         WiFi.localIP().toString());
@@ -2312,7 +2435,8 @@ void initWebServer() {
   Serial.println("[HTTP] web server up on port 80");
 }
 
-void setup_test() {
+// Uncomment for additional debugging
+/*void setup_test() {
   Serial.begin(115200);
   delay(300);
   Serial.println("\n[MIN] starting");
@@ -2347,13 +2471,13 @@ void setup_test() {
 
   Serial.println("[MIN] drawing HELLO");
   gfx->fillScreen(0x0000);
-  gfx->setTextSize(4);
+  gfx->setTextSize(TXT_XLARGE);
   gfx->setTextColor(0xFFFF);
   gfx->setCursor(70, 200);
   gfx->print("HELLO");
   canvas->flush();
   Serial.println("[MIN] done — holding");
-}
+}*/
 
 // ================================================================
 //                          setup()
@@ -2363,7 +2487,13 @@ void setup_test() {
 // Then spawn the background ADS-B fetch task on core 0.
 // ================================================================
 void setup() {
+  // Keep power on (required for battery operation on Waveshare boards)
+  pinMode(PWR_Control_PIN, OUTPUT);
+  digitalWrite(PWR_Control_PIN, HIGH);
+  pinMode(PWR_KEY_Input_PIN, INPUT);  // Initialize button monitoring
   Serial.begin(115200);
+  delay(300);
+  Serial.println("\n[MIN] starting");
   Serial.printf("[Mem] PSRAM size: %u bytes\n", (unsigned)ESP.getPsramSize());
   Serial.printf("[Mem] Free PSRAM: %u bytes\n", (unsigned)ESP.getFreePsram());
   Serial.printf("[Mem] Free heap:  %u bytes\n", (unsigned)ESP.getFreeHeap());
@@ -2397,7 +2527,7 @@ void setup() {
   // Splash so the user sees something while WiFi negotiates
   if (gfx) {
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(2);
+    gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 70, CY - 8);
     gfx->print("FlightRadar");
@@ -2444,6 +2574,7 @@ void loop() {
   updateImuRotation();
   checkIdleDim();
   advanceSweep();
+  PWR_Loop();  // Handles long-press detection
 
   // Render at ~30 fps — plenty smooth, leaves CPU for everything else
   static uint32_t lastFrameMs = 0;

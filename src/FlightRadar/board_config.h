@@ -87,13 +87,16 @@
   #define MIC_SD_PIN      39
 
   // ── Buttons ───────────────────────────────────────────────────
-  #define BTN_BOOT_PIN     0          // BOOT button — used as user button
+  #define BTN_BOOT_PIN        0          // BOOT button — used as user button
+  #define PWR_KEY_Input_PIN   6
+  #define PWR_Control_PIN     7
 
   // ── Battery monitoring ────────────────────────────────────────
   // The schematic shows a battery sense divider; verify the pin on
   // the production schematic before enabling.
-  #define BATT_ADC_PIN    -1          // -1 = disabled until confirmed
+  #define BATT_ADC_PIN    8          // -1 = disabled until confirmed
   #define BATT_DIVIDER    2.0f
+  #define Measurement_offset  0.990476   // Battery Offset
 
 #else
   #error "No board selected — define BOARD_WAVESHARE_S3_146C or add a new board block."

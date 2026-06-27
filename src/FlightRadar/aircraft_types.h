@@ -116,9 +116,13 @@ static const AircraftType AIRCRAFT_TYPES[] PROGMEM = {
   { "LJ60", "Learjet 60",            CAT_MEDIUM },
 
   // ── General aviation ───────────────────────────────────────
+  { "B190", "Beech 1900",            CAT_LIGHT },
+  { "B350", "Beech King Air 350",    CAT_LIGHT },
   { "BE20", "Beech King Air 200",    CAT_LIGHT },
   { "BE36", "Beech Bonanza 36",      CAT_LIGHT },
   { "BE58", "Beech Baron 58",        CAT_LIGHT },
+  { "BE40", "Beechjet 400",          CAT_LIGHT },
+  { "BE4A", "Beechjet 400A",         CAT_LIGHT },
   { "BE9L", "Beech King Air 90",     CAT_LIGHT },
   { "C152", "Cessna 152",            CAT_LIGHT },
   { "C172", "Cessna 172 Skyhawk",    CAT_LIGHT },
@@ -126,12 +130,20 @@ static const AircraftType AIRCRAFT_TYPES[] PROGMEM = {
   { "C206", "Cessna 206",            CAT_LIGHT },
   { "C208", "Cessna Caravan",        CAT_LIGHT },
   { "C210", "Cessna 210",            CAT_LIGHT },
+  { "C25A", "Cessna Citation CJ2",   CAT_LIGHT },
+  { "C25B", "Cessna Citation CJ3",   CAT_LIGHT },
+  { "C25C", "Cessna Citation CJ4",   CAT_LIGHT },
+  { "C550", "Cessna Citation II",    CAT_LIGHT },
+  { "C560", "Cessna Citation V",     CAT_LIGHT },
+  { "C750", "Cessna Citation X",     CAT_LIGHT },
   { "DA40", "Diamond DA40",          CAT_LIGHT },
   { "DA42", "Diamond DA42",          CAT_LIGHT },
   { "DA62", "Diamond DA62",          CAT_LIGHT },
+  { "DV20", "Diamond DV20 Katana",   CAT_LIGHT },
   { "M20P", "Mooney M20",            CAT_LIGHT },
   { "P28A", "Piper Cherokee",        CAT_LIGHT },
   { "P28R", "Piper Arrow",           CAT_LIGHT },
+  { "P32R", "Piper Lance/Saratoga",  CAT_LIGHT },
   { "PA31", "Piper Navajo",          CAT_LIGHT },
   { "PA34", "Piper Seneca",          CAT_LIGHT },
   { "PA46", "Piper Malibu",          CAT_LIGHT },
@@ -173,33 +185,45 @@ static const AircraftType AIRCRAFT_TYPES[] PROGMEM = {
   { "DH8B", "Dash 8-200",            CAT_MEDIUM },
   { "DH8C", "Dash 8-300",            CAT_MEDIUM },
   { "DH8D", "Dash 8 Q400",           CAT_MEDIUM },
+  { "JS41", "BAe Jetstream 41",      CAT_LIGHT },
   { "MD11", "McDonnell MD-11",       CAT_HEAVY },
   { "MD80", "McDonnell MD-80",       CAT_HEAVY },
   { "MD83", "McDonnell MD-83",       CAT_HEAVY },
   { "MD88", "McDonnell MD-88",       CAT_HEAVY },
   { "MD90", "McDonnell MD-90",       CAT_HEAVY },
   { "SF34", "Saab 340",              CAT_MEDIUM },
+  { "SB20", "Saab 2000",             CAT_MEDIUM },
+  { "S340", "Saab 340",              CAT_MEDIUM },
+  { "SH36", "Shorts 360",            CAT_LIGHT },
 };
 
 static const size_t AIRCRAFT_TYPES_COUNT =
     sizeof(AIRCRAFT_TYPES) / sizeof(AIRCRAFT_TYPES[0]);
 
-// Binary search the PROGMEM table. Returns nullptr if not found.
-// Caller can safely read the returned pointer via memcpy_P / strcpy_P
-// or by simply assigning to a stack copy because the data is small.
+/**
+ * Look up aircraft type information by ICAO type code.
+ * Performs a linear search through the PROGMEM aircraft type table.
+ * 
+ * @param code 4-character ICAO type code (e.g., "B738", "A320", "BE20")
+ * @return Pointer to AircraftType struct if found, nullptr if not found
+ */
 inline const AircraftType* lookupAircraftType(const char* code) {
+  // Validate input
   if (!code || strlen(code) == 0) return nullptr;
-  int lo = 0;
-  int hi = (int)AIRCRAFT_TYPES_COUNT - 1;
-  while (lo <= hi) {
-    int mid = (lo + hi) >> 1;
+  
+  // Linear search through aircraft type table (stored in PROGMEM)
+  // Performance is acceptable for ~125 entries on ESP32-S3
+  for (int i = 0; i < AIRCRAFT_TYPES_COUNT; i++) {
     char buf[5];
-    memcpy_P(buf, AIRCRAFT_TYPES[mid].code, 5);
-    int cmp = strncmp(code, buf, 4);
-    if (cmp == 0) return &AIRCRAFT_TYPES[mid];
-    if (cmp < 0)  hi = mid - 1;
-    else          lo = mid + 1;
+    // Read type code from PROGMEM into RAM buffer for comparison
+    memcpy_P(buf, AIRCRAFT_TYPES[i].code, 5);
+    // Compare first 4 characters (ICAO type codes are always 4 chars)
+    if (strncmp(code, buf, 4) == 0) {
+      return &AIRCRAFT_TYPES[i];
+    }
   }
+  
+  // Type code not found in database
   return nullptr;
 }
 

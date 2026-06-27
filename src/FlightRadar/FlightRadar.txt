@@ -50,6 +50,7 @@
 #include "board_config.h"
 #include "themes.h"
 #include "aircraft_types.h"
+#include "font_config.h"
 
 #include "SensorQMI8658.hpp"      // From SensorLib (Lewis He)
 
@@ -103,6 +104,7 @@ struct Settings {
   float    home_lon;
   int32_t  tz_offset_seconds;
   bool     use_24h;
+  bool     observe_dst = true;   // true = add 1 hour when in DST period
   uint8_t  range_idx;            // 0..3 → 5/10/25/50
   uint8_t  unit_mode = 0;        // 0=NATIVE(nm/kt), 1=MILES(mi/mph), 2=KILOMETERS(km/kmh);
   uint8_t  theme_idx;
@@ -274,6 +276,7 @@ void loadSettings() {
   settings.home_lon          = prefs.getFloat("lon",    DEFAULT_LON);
   settings.tz_offset_seconds = prefs.getInt  ("tz",     -18000);  // EST
   settings.use_24h           = prefs.getBool ("h24",    false);
+  settings.observe_dst       = prefs.getBool("ovserve_dst", true);
   settings.range_idx         = prefs.getUChar("range",  2);       // 25 mi
   settings.unit_mode         = prefs.getUChar("unit_mode", 0);  // 0=native default
   settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN_PHOSPHOR);
@@ -292,20 +295,21 @@ void loadSettings() {
 
 void saveSettings() {
   prefs.begin     ("flightradar", false);
-  prefs.putFloat  ("lat",       settings.home_lat);
-  prefs.putFloat  ("lon",       settings.home_lon);
-  prefs.putInt    ("tz",        settings.tz_offset_seconds);
-  prefs.putBool   ("h24",       settings.use_24h);
-  prefs.putUChar  ("range",     settings.range_idx);
-  prefs.putUChar  ("unit_mode", settings.unit_mode);
-  prefs.putUChar  ("theme",     settings.theme_idx);
-  prefs.putUChar  ("bright",    settings.brightness);
-  prefs.putInt    ("minalt",    settings.min_altitude_ft);
-  prefs.putBool   ("audio",     settings.audio_enabled);
-  prefs.putBool   ("demo",      settings.demo_mode);
-  prefs.putBool   ("log",       settings.log_to_fs);
-  prefs.putUInt   ("idle",      settings.idle_timeout_sec);
-  prefs.putString ("otapw",     settings.ota_password);
+  prefs.putFloat  ("lat",         settings.home_lat);
+  prefs.putFloat  ("lon",         settings.home_lon);
+  prefs.putInt    ("tz",          settings.tz_offset_seconds);
+  prefs.putBool   ("h24",         settings.use_24h);
+  prefs.putBool   ("observe_dst", settings.observe_dst);
+  prefs.putUChar  ("range",       settings.range_idx);
+  prefs.putUChar  ("unit_mode",   settings.unit_mode);
+  prefs.putUChar  ("theme",       settings.theme_idx);
+  prefs.putUChar  ("bright",      settings.brightness);
+  prefs.putInt    ("minalt",      settings.min_altitude_ft);
+  prefs.putBool   ("audio",       settings.audio_enabled);
+  prefs.putBool   ("demo",        settings.demo_mode);
+  prefs.putBool   ("log",         settings.log_to_fs);
+  prefs.putUInt   ("idle",        settings.idle_timeout_sec);
+  prefs.putString ("otapw",       settings.ota_password);
   prefs.end();
 }
 
@@ -359,6 +363,19 @@ void initDisplay() {
 void setBrightness(uint8_t b) {
   if (b < BRIGHTNESS_MIN) b = BRIGHTNESS_MIN;
   ledcWrite(LCD_BL_PIN, b);
+}
+
+void PWR_Loop(void) {
+  static uint16_t pressTime = 0;
+  
+  if(!digitalRead(PWR_KEY_Input_PIN)) {  // Button pressed
+    pressTime++;
+    if(pressTime >= 200) {  // 20 seconds = shutdown
+      digitalWrite(PWR_Control_PIN, LOW);  // Power off
+    }
+  } else {
+    pressTime = 0;
+  }
 }
 
 // ================================================================
@@ -587,6 +604,40 @@ void syncRtcFromSystem() {
   struct tm t;
   localtime_r(&now, &t);
   rtcWrite(&t);
+}
+
+// Returns true if DST is in effect for the given time
+bool isDST(time_t t) {
+  if (!settings.observe_dst) return false;
+  
+  struct tm* timeinfo = localtime(&t);
+  int month = timeinfo->tm_mon + 1;  // 1-12
+  int day = timeinfo->tm_mday;
+  int wday = timeinfo->tm_wday;      // 0=Sunday
+  
+  // US DST: Second Sunday March to First Sunday November
+  if (month < 3 || month > 11) return false;  // Jan, Feb, Dec
+  if (month > 3 && month < 11) return true;     // Apr-Oct
+  
+  // March: DST starts second Sunday
+  if (month == 3) {
+    int secondSunday = 8 + (7 - ((1 + 8) % 7)) % 7;  // Day of month for 2nd Sunday
+    if (day < secondSunday) return false;
+    if (day > secondSunday) return true;
+    // On transition day, check hour (assume 2 AM)
+    return timeinfo->tm_hour >= 2;
+  }
+  
+  // November: DST ends first Sunday
+  if (month == 11) {
+    int firstSunday = 1 + (7 - ((1 + 1) % 7)) % 7;  // Day of month for 1st Sunday
+    if (day < firstSunday) return true;
+    if (day > firstSunday) return false;
+    // On transition day, check hour (assume 2 AM)
+    return timeinfo->tm_hour < 2;
+  }
+  
+  return false;
 }
 
 // ---- Audio (I2S → PCM5101 DAC → speaker) -----------------------
@@ -1180,10 +1231,10 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   const RadarTheme& th = currentTheme();
 
   // Aircraft count badge (left)
-  g->setTextSize(1);
-  g->setTextColor(th.textPrimary);
-  g->setCursor(70, 28);
-  g->printf("AC:%d", (int)stats.aircraft_in_range_now);
+//  g->setTextSize(TXT_SMALL);
+//  g->setTextColor(th.textPrimary);
+//  g->setCursor(80, 28);
+//  g->printf("AC:%d", (int)stats.aircraft_in_range_now);
 
   // Range label (center)
   char rngBuf[16];
@@ -1202,7 +1253,7 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   else if (rssi > -70)     { wcolor = th.battHigh;   wlabel = "WiFi"; }
   else                     { wcolor = th.battMid;    wlabel = "WiFi"; }
   g->setTextColor(wcolor);
-  g->setCursor(LCD_WIDTH - 100, 28);
+  g->setCursor(LCD_WIDTH - 120, 28);
   g->print(wlabel);
 }
 
@@ -1211,8 +1262,8 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
 // checked to confirm which pin reads the battery divider).
 static void drawBatteryIndicator(Arduino_GFX* g) {
   if (BATT_ADC_PIN < 0) return;
-  int raw = analogRead(BATT_ADC_PIN);
-  float v = (raw / 4095.0f) * 3.3f * BATT_DIVIDER;
+  int raw = analogReadMilliVolts(BATT_ADC_PIN);
+  float v = (raw * 3.0 / 1000.0) / Measurement_offset;
   // Crude linear map: 4.2 V = 100 %, 3.3 V = 0 %
   int pct = (int)((v - 3.3f) / 0.9f * 100.0f);
   if (pct < 0)   pct = 0;
@@ -1248,7 +1299,7 @@ void renderRadar() {
   g->drawLine(CX, CY - RADAR_RADIUS, CX, CY + RADAR_RADIUS, th.crosshair);
 
   // ── Compass labels ──────────────────────────────────────────
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.compassRose);
   g->setCursor(CX - 5,                 CY - RADAR_RADIUS - 22); g->print("N");
   g->setCursor(CX - 5,                 CY + RADAR_RADIUS + 6);  g->print("S");
@@ -1256,7 +1307,7 @@ void renderRadar() {
   g->setCursor(CX + RADAR_RADIUS + 6,  CY - 7);                 g->print("E");
 
   // ── Range scale labels on each ring ─────────────────────────
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   int maxR = currentRangeUnits();
   for (int i = 1; i <= 4; ++i) {
@@ -1300,7 +1351,7 @@ void renderRadar() {
 
       // Callsign label (only when blip is bright enough to read)
       if (a.callsign[0] && a.intensity > 80) {
-        g->setTextSize(1);
+        g->setTextSize(TXT_SMALL);
         g->setTextColor(fadeColor(th.textSecondary, a.intensity));
         g->setCursor(x + 6, y - 6);
         g->print(a.callsign);
@@ -1310,7 +1361,7 @@ void renderRadar() {
   }
 
   drawTopStatusStrip(g);
-  drawBatteryIndicator(g);
+//  drawBatteryIndicator(g);
 
   flushFrame();
 }
@@ -1331,7 +1382,7 @@ void renderFlightDetail() {
   g->drawCircle(CX, CY, LCD_RADIUS - 7, th.panelBorder);
 
   if (selectedAircraft < 0 || selectedAircraft >= aircraftCount) {
-    g->setTextSize(2);
+    g->setTextSize(TXT_MEDIUM);
     g->setTextColor(th.textPrimary);
     g->setCursor(CX - 70, CY - 8);
     g->print("No flight");
@@ -1346,6 +1397,13 @@ void renderFlightDetail() {
     xSemaphoreGive(aircraftMutex);
   } else {
     return;
+  }
+
+  const AircraftType* t2 = lookupAircraftType(a.type);
+  if (!t2) {
+    Serial.printf("Lookup failed for type: '%s' (len=%d) hex:", a.type, strlen(a.type));
+    for (int i = 0; i < 5; i++) Serial.printf(" %02X", (unsigned char)a.type[i]);
+    Serial.println();
   }
 
   // Resolve ICAO type → human name from the PROGMEM table
@@ -1381,19 +1439,19 @@ void renderFlightDetail() {
   }
 
   int y = 80;
-  g->setTextSize(3);
+  g->setTextSize(TXT_LARGE);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 75, y);
   g->print(a.callsign[0] ? a.callsign : "------");
 
   y += 40;
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 90, y);
   g->printf("%s  %s", a.type, typeName);
 
   y += 24;
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 90, y); g->printf("ALT: %ld ft", (long)a.altitude_ft);
   y += 26;
@@ -1415,10 +1473,10 @@ void renderFlightDetail() {
     g->setCursor(CX - 90, y); g->printf("SQK: %s", a.squawk);
   }
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   g->setCursor(CX - 75, LCD_HEIGHT - 30);
-  g->print("Swipe right to go back");
+//  g->print("Swipe right to go back");
 
   flushFrame();
 }
@@ -1432,13 +1490,17 @@ void renderClock() {
   g->fillScreen(th.background);
 
   time_t now = time(nullptr);
+  // Apply DST if enabled
+  if (settings.observe_dst && isDST(now)) {
+    now += 3600;  // Add 1 hour for DST
+  }
   struct tm tm; localtime_r(&now, &tm);
 
   const char* days[7]    = {"SUN","MON","TUE","WED","THU","FRI","SAT"};
   const char* months[12] = {"JAN","FEB","MAR","APR","MAY","JUN",
                             "JUL","AUG","SEP","OCT","NOV","DEC"};
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.clockDate);
   g->setCursor(CX - 18, 90);
   g->print(days[tm.tm_wday]);
@@ -1451,13 +1513,13 @@ void renderClock() {
     int h = tm.tm_hour % 12; if (h == 0) h = 12;
     snprintf(timeBuf, sizeof(timeBuf), "%2d:%02d", h, tm.tm_min);
   }
-  g->setTextSize(7);
+  g->setTextSize(TXT_XXLARGE);
   g->setTextColor(th.clockFace);
   g->setCursor(CX - 105, CY - 28);
   g->print(timeBuf);
 
   // Seconds (smaller, right of minutes)
-  g->setTextSize(3);
+  g->setTextSize(TXT_LARGE);
   g->setTextColor(th.clockSecond);
   g->setCursor(CX + 108, CY + 18);
   char secBuf[4]; snprintf(secBuf, sizeof(secBuf), "%02d", tm.tm_sec);
@@ -1465,7 +1527,7 @@ void renderClock() {
 
   // AM/PM in 12-hour mode
   if (!settings.use_24h) {
-    g->setTextSize(2);
+    g->setTextSize(TXT_MEDIUM);
     g->setTextColor(th.clockSecond);
     g->setCursor(CX + 108, CY - 28);
     g->print(tm.tm_hour < 12 ? "AM" : "PM");
@@ -1475,15 +1537,15 @@ void renderClock() {
   char dateBuf[24];
   snprintf(dateBuf, sizeof(dateBuf), "%s %d  %d",
            months[tm.tm_mon], tm.tm_mday, tm.tm_year + 1900);
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.clockDate);
   g->setCursor(CX - 80, CY + 60);
   g->print(dateBuf);
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   g->setCursor(CX - 75, LCD_HEIGHT - 30);
-  g->print("Swipe right to go back");
+//  g->print("Swipe right to go back");
 
   drawBatteryIndicator(g);
   flushFrame();
@@ -1497,13 +1559,13 @@ void renderStats() {
   const RadarTheme& th = currentTheme();
   g->fillScreen(th.background);
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 50, 70);
   g->print("STATS");
 
   int y = 110;
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 90, y);
   g->printf("Seen total:   %lu", (unsigned long)stats.aircraft_seen_total);
@@ -1551,9 +1613,9 @@ void renderStats() {
             (unsigned long)(uptimeSec / 3600),
             (unsigned long)((uptimeSec / 60) % 60));
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setCursor(CX - 75, LCD_HEIGHT - 30);
-  g->print("Swipe right to go back");
+//  g->print("Swipe right to go back");
 
   flushFrame();
 }
@@ -1585,6 +1647,7 @@ static String settingsValueStr(int row) {
     case 5: snprintf(buf, sizeof(buf), "%s", settings.demo_mode     ? "ON" : "OFF"); break;
     case 6: snprintf(buf, sizeof(buf), "%d", settings.brightness); break;
     case 7: snprintf(buf, sizeof(buf), "%s", settings.log_to_fs    ? "ON" : "OFF"); break;
+    case 8: snprintf(buf, sizeof(buf), "%s", settings.observe_dst ? "ON" : "OFF"); break;
     default: buf[0] = '\0';
   }
   return String(buf);
@@ -1602,28 +1665,30 @@ void renderSettingsOverlay() {
   g->fillScreen(th.background);
   g->drawCircle(CX, CY, LCD_RADIUS - 6, th.panelBorder);
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 50, 70);
+  g->setCursor(CX - 60, 60);
   g->print("SETTINGS");
 
-  const char* labels[8] = {
+  const char* labels[9] = {
     "Theme:", "Range:", "Units:", "Time:",
-    "Audio:", "Demo:",  "Bright:", "Log:"
+    "Audio:", "Demo:",  "Bright:", "Log:", "DST:" 
   };
-  int y = 110;
-  g->setTextSize(1);
+  int y = 100;
+  g->setTextSize(TXT_SMALL);
   for (int i = 0; i < 8; ++i) {
     g->setTextColor(th.textSecondary);
-    g->setCursor(CX - 80, y); g->print(labels[i]);
+    g->setCursor(CX - 120, y); g->print(labels[i]);
     g->setTextColor(th.textPrimary);
-    g->setCursor(CX - 10, y); g->print(settingsValueStr(i));
-    y += 18;
+    g->setCursor(CX - 20, y); g->print(settingsValueStr(i));
+    y += 30;
   }
 
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 100, LCD_HEIGHT - 30);
-  g->print("Tap row to change   Swipe \xc3\xa2\xc2\x86\xc2\x92 exit");
+  g->setCursor(CX - 100, LCD_HEIGHT - 60);
+  g->print("Tap row to change");
+  g->setCursor(CX - 100, LCD_HEIGHT - 40);
+  g->print("Swipe \xc3\xa2\xc2\x86\xc2\x92 exit");
   flushFrame();
 }
 
@@ -1644,6 +1709,7 @@ void cycleSettingsRow(int row) {
       break;
     }
     case 7: settings.log_to_fs = !settings.log_to_fs; break;
+    case 8: settings.observe_dst = !settings.observe_dst; break;
   }
   saveSettings();
 }
@@ -1660,33 +1726,33 @@ void renderApMode() {
   g->fillScreen(th.background);
   g->drawCircle(CX, CY, LCD_RADIUS - 6, th.panelBorder);
 
-  g->setTextSize(3);
+  g->setTextSize(TXT_LARGE);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 65, 90);
   g->print("SETUP");
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 100, 150);
   g->print("Connect WiFi to:");
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   int16_t sx = CX - ((int16_t)apSsid.length() * 12) / 2;
   g->setCursor(sx, 175);
   g->print(apSsid);
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
   g->setCursor(CX - 95, 215);
   g->print("Then open a browser at:");
 
-  g->setTextSize(2);
+  g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
   g->setCursor(CX - 80, 240);
   g->print("192.168.4.1");
 
-  g->setTextSize(1);
+  g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
   g->setCursor(CX - 110, LCD_HEIGHT - 50);
   g->print("Portal stays open for 5 min");
@@ -2063,7 +2129,7 @@ void initOTA() {
   ArduinoOTA.onStart([]() {
     if (!gfx) return;
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(3);
+    gfx->setTextSize(TXT_LARGE);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 80, CY - 10);
     gfx->print("OTA...");
@@ -2078,7 +2144,7 @@ void initOTA() {
   ArduinoOTA.onEnd([]() {
     if (!gfx) return;
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(2);
+    gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 60, CY - 8);
     gfx->print("Updated!");
@@ -2097,23 +2163,104 @@ void initOTA() {
 // IP). The page renders the current settings, lets you change them,
 // and saves to NVS.  PORTAL_HTML lives in flash to keep RAM free.
 // ================================================================
+const char THEME_GREEN_CSS[] PROGMEM = R"rawliteral(
+  :root {
+    --bg: #0a0f0a;
+    --fg: #33ff33;
+    --accent: #1a331a;
+    --input-bg: #0f1a0f;
+    --input-border: #33ff33;
+    --button-bg: #33ff33;
+    --button-fg: #0a0f0a;
+    --link: #66ff66;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15),
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+)rawliteral";
+
+const char THEME_AMBER_CSS[] PROGMEM = R"rawliteral(
+  :root {
+    --bg: #1a0f00;
+    --fg: #ffb000;
+    --accent: #331a00;
+    --input-bg: #1a0f00;
+    --input-border: #ffb000;
+    --button-bg: #ffb000;
+    --button-fg: #1a0f00;
+    --link: #ffcc33;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15),
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+)rawliteral";
+
 static const char PORTAL_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FlightRadar</title>
 <style>
- body{font-family:system-ui,sans-serif;background:#111;color:#dfd;
-      max-width:520px;margin:0 auto;padding:14px}
- h1{color:#7f7;margin:0 0 8px}
- h2{color:#5d5;margin-top:18px;font-size:1.05em}
+ {{THEME_CSS}}
+ body{
+   font-family:'Courier New', monospace;
+   background:var(--bg);
+   color: var(--fg);
+   max-width:520px;
+   margin:0 auto;
+   padding:14px }
+ h1 {
+   color:var(--fg);
+   text-shadow: 0 0 5px var(--fg);
+   margin:0 0 8px}
+ h2 {
+   color:var(--fg);
+   margin-top:18px;
+   text-shadow: 0 0 5px var(--fg);
+   font-size:1.05em}
  label{display:block;margin-top:10px;font-size:.9em;color:#bdb}
- input,select{width:100%;background:#222;border:1px solid #353;color:#dfd;
-              padding:6px;border-radius:4px;box-sizing:border-box}
+ input,select {
+   width:100%;
+   background: var(--input-bg);
+   border: 1px solid var(--input-border);
+   color: var(--fg);
+   padding:6px;
+   border-radius:4px;
+   box-sizing:border-box }
  input[type=checkbox]{width:auto}
- button{background:#272;border:1px solid #5a5;color:#dfd;padding:9px 14px;
-        margin-top:14px;border-radius:4px;font-size:1em;cursor:pointer}
+ button{
+   background: var(--button-bg);
+   border: 1px solid var(--input-border);
+   color: var(--button-fg);
+   padding: 9px 14px;
+   margin-top: 14px;
+   border-radius: 4px;
+   font-size: 1em;
+   cursor: pointer}
  .row{display:flex;gap:8px} .row>div{flex:1}
- small{color:#7a7}
+ small {color:var(--fg)}
+ a { color: var(--link) }
 </style></head><body>
 <h1>FlightRadar</h1>
 <small>{{HOSTNAME}} &middot; IP {{IP}} &middot; uptime {{UPT}}</small>
@@ -2133,6 +2280,7 @@ static const char PORTAL_HTML[] PROGMEM = R"HTML(
  <label>Timezone hours from UTC (e.g. -5)</label>
  <input type="number" name="tz" value="{{TZ}}">
  <label><input type="checkbox" name="h24" {{H24}}> 24-hour format</label>
+ <label><input type="checkbox" name="dst" {{DST}}> Observe DST</label>
  <h2>Behavior</h2>
  <label>Min altitude filter (ft)</label>
  <input type="number" name="minalt" value="{{MINALT}}">
@@ -2186,6 +2334,10 @@ static String renderPortalPage() {
   snprintf(uptBuf, sizeof(uptBuf), "%luh %lum",
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60));
 
+  // Theme CSS - 0=Green Phosphor, 1=Amber CRT
+  const char* themeCss = (settings.theme_idx == 1) ? THEME_AMBER_CSS : THEME_GREEN_CSS;
+  html.replace("{{THEME_CSS}}",  themeCss);
+
   html.replace("{{HOSTNAME}}",   String(MDNS_HOSTNAME) + ".local");
   html.replace("{{IP}}",         WiFi.localIP().toString());
   html.replace("{{UPT}}",        uptBuf);
@@ -2197,6 +2349,7 @@ static String renderPortalPage() {
   html.replace("{{BRIGHT}}",     String(settings.brightness));
   html.replace("{{TZ}}",         String(settings.tz_offset_seconds / 3600));
   html.replace("{{H24}}",        chk(settings.use_24h));
+  html.replace("{{DST}}",        chk(settings.observe_dst));
   html.replace("{{MINALT}}",     String(settings.min_altitude_ft));
   html.replace("{{IDLE}}",       String(settings.idle_timeout_sec));
   html.replace("{{AUDIO}}",      chk(settings.audio_enabled));
@@ -2224,6 +2377,7 @@ void handlePortalSave() {
   if (webServer.hasArg("tz"))     settings.tz_offset_seconds = webServer.arg("tz").toInt() * 3600;
   // Checkboxes: absent argument == unchecked
   settings.use_24h        = webServer.hasArg("h24");
+  settings.observe_dst    = webServer.hasArg("dst");
   settings.audio_enabled  = webServer.hasArg("audio");
   settings.demo_mode      = webServer.hasArg("demo");
   settings.log_to_fs      = webServer.hasArg("log");
@@ -2266,7 +2420,8 @@ void initWebServer() {
   Serial.println("[HTTP] web server up on port 80");
 }
 
-void setup_test() {
+// Uncomment for additional debugging
+/*void setup_test() {
   Serial.begin(115200);
   delay(300);
   Serial.println("\n[MIN] starting");
@@ -2301,13 +2456,13 @@ void setup_test() {
 
   Serial.println("[MIN] drawing HELLO");
   gfx->fillScreen(0x0000);
-  gfx->setTextSize(4);
+  gfx->setTextSize(TXT_XLARGE);
   gfx->setTextColor(0xFFFF);
   gfx->setCursor(70, 200);
   gfx->print("HELLO");
   canvas->flush();
   Serial.println("[MIN] done — holding");
-}
+}*/
 
 // ================================================================
 //                          setup()
@@ -2317,7 +2472,13 @@ void setup_test() {
 // Then spawn the background ADS-B fetch task on core 0.
 // ================================================================
 void setup() {
+  // Keep power on (required for battery operation on Waveshare boards)
+  pinMode(PWR_Control_PIN, OUTPUT);
+  digitalWrite(PWR_Control_PIN, HIGH);
+  pinMode(PWR_KEY_Input_PIN, INPUT);  // Initialize button monitoring
   Serial.begin(115200);
+  delay(300);
+  Serial.println("\n[MIN] starting");
   Serial.printf("[Mem] PSRAM size: %u bytes\n", (unsigned)ESP.getPsramSize());
   Serial.printf("[Mem] Free PSRAM: %u bytes\n", (unsigned)ESP.getFreePsram());
   Serial.printf("[Mem] Free heap:  %u bytes\n", (unsigned)ESP.getFreeHeap());
@@ -2351,7 +2512,7 @@ void setup() {
   // Splash so the user sees something while WiFi negotiates
   if (gfx) {
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(2);
+    gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 70, CY - 8);
     gfx->print("FlightRadar");
@@ -2398,6 +2559,7 @@ void loop() {
   updateImuRotation();
   checkIdleDim();
   advanceSweep();
+  PWR_Loop();  // Handles long-press detection
 
   // Render at ~30 fps — plenty smooth, leaves CPU for everything else
   static uint32_t lastFrameMs = 0;
