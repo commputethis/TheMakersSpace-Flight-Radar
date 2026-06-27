@@ -1702,8 +1702,8 @@ void renderSettingsOverlay() {
   g->setTextColor(th.textDim);
   g->setCursor(CX - 100, LCD_HEIGHT - 60);
   g->print("Tap row to change");
-  g->setCursor(CX - 100, LCD_HEIGHT - 40);
-  g->print("Swipe right to exit");
+  //g->setCursor(CX - 100, LCD_HEIGHT - 40);
+  //g->print("Swipe right to exit");
   flushFrame();
 }
 
