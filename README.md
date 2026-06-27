@@ -2,7 +2,7 @@
 
 A portable ESP32-based flight tracking display that connects to your ADS-B receiver and shows nearby aircraft on a touchscreen display. Perfect for aviation enthusiasts, makerspaces, or anyone who wants a dedicated aircraft monitoring station.
 
-![Flight Radar Display](docs/images/flight-radar.jpg)
+![Flight Radar Display](docs/images/FlightRadar.gif)
 
 ## Features
 
