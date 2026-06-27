@@ -1702,7 +1702,7 @@ void renderSettingsOverlay() {
   };
   int y = 100;
   g->setTextSize(TXT_SMALL);
-  for (int i = 0; i < 8; ++i) {
+  for (int i = 0; i < 9; ++i) {
     g->setTextColor(th.textSecondary);
     g->setCursor(CX - 120, y); g->print(labels[i]);
     g->setTextColor(th.textPrimary);
