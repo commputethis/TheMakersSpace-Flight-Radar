@@ -30,10 +30,10 @@ struct TouchTracker {
 
 inline float angleFromCenter(int16_t x, int16_t y) {
   // 0° = up, +clockwise — matches our radar bearing convention
-  return atan2f((float)(x - CX), -(float)(y - CY)) * 57.295779513f;
+  return atan2f((float)(x - SCREEN_CX), -(float)(y - SCREEN_CY)) * 57.295779513f;
 }
 inline int16_t distFromCenter(int16_t x, int16_t y) {
-  int dx = x - CX, dy = y - CY;
+  int dx = x - SCREEN_CX, dy = y - SCREEN_CY;
   return (int16_t)sqrtf((float)(dx * dx + dy * dy));
 }
 
@@ -138,7 +138,7 @@ void pollTouchAndHandleGestures() {
       touch.startMs        = now;
       touch.longPressFired = false;
       // Touched near the outer edge? Switch to brightness-drag mode.
-      if (distFromCenter(tp.x, tp.y) > LCD_RADIUS - 30) {
+      if (distFromCenter(tp.x, tp.y) > LCD_RADIUS - EDGE_BRIGHTNESS_MARGIN) {
         touch.state        = TS_EDGE_BRIGHT;
         touch.lastAngleDeg = angleFromCenter(tp.x, tp.y);
         noteInteraction();
@@ -147,13 +147,13 @@ void pollTouchAndHandleGestures() {
       int dx = tp.x - touch.startX;
       int dy = tp.y - touch.startY;
       // Long press: held > 500ms with minimal movement
-      if (!touch.longPressFired && (now - touch.startMs) > 500 &&
-          abs(dx) < 15 && abs(dy) < 15) {
+      if (!touch.longPressFired && (now - touch.startMs) > LONG_PRESS_DURATION_MS &&
+        abs(dx) < LONG_PRESS_DEADZONE && abs(dy) < LONG_PRESS_DEADZONE) {
         touch.longPressFired = true;
         onLongPress();
       }
       // Promote to dragging once finger moves enough
-      if (abs(dx) > 25 || abs(dy) > 25) {
+      if (abs(dx) > DRAG_THRESHOLD || abs(dy) > DRAG_THRESHOLD) {
         touch.state = TS_DRAGGING;
         touch.lastX = tp.x;
         touch.lastY = tp.y;
@@ -182,7 +182,7 @@ void pollTouchAndHandleGestures() {
       int dx = endX - touch.startX;
       int dy = endY - touch.startY;
 
-      if (abs(dx) > 60 && abs(dx) >= abs(dy)) {
+      if (abs(dx) > SWIPE_THRESHOLD && abs(dx) >= abs(dy)) {
         onSwipe(dx > 0 ? 1 : 3);                 // left/right
       } else if (abs(dy) > 60 && abs(dy) > abs(dx)) {
         onSwipe(dy > 0 ? 2 : 0);                 // down/up
@@ -343,22 +343,22 @@ void initOTA() {
     gfx->fillScreen(BLACK);
     gfx->setTextSize(TXT_LARGE);
     gfx->setTextColor(WHITE);
-    gfx->setCursor(CX - 80, CY - 10);
+    gfx->setCursor(SCREEN_CX - 80, SCREEN_CY - 10);
     gfx->print("OTA...");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     if (!gfx) return;
     int pct = (progress * 100) / total;
-    gfx->fillRect(CX - 100, CY + 30, 200, 14, BLACK);
-    gfx->drawRect(CX - 100, CY + 30, 200, 14, WHITE);
-    gfx->fillRect(CX -  98, CY + 32, (196 * pct) / 100, 10, WHITE);
+    gfx->fillRect(SCREEN_CX - 100, SCREEN_CY + 30, 200, 14, BLACK);
+    gfx->drawRect(SCREEN_CX - 100, SCREEN_CY + 30, 200, 14, WHITE);
+    gfx->fillRect(SCREEN_CX -  98, SCREEN_CY + 32, (196 * pct) / 100, 10, WHITE);
   });
   ArduinoOTA.onEnd([]() {
     if (!gfx) return;
     gfx->fillScreen(BLACK);
     gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
-    gfx->setCursor(CX - 60, CY - 8);
+    gfx->setCursor(SCREEN_CX - 60, SCREEN_CY - 8);
     gfx->print("Updated!");
   });
   ArduinoOTA.onError([](ota_error_t e) {
@@ -726,7 +726,7 @@ void setup() {
     gfx->fillScreen(BLACK);
     gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
-    gfx->setCursor(CX - 70, CY - 8);
+    gfx->setCursor(SCREEN_CX - 70, SCREEN_CY - 8);
     gfx->print("FlightRadar");
     canvas->flush();
   }

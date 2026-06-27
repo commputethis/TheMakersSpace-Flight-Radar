@@ -13,13 +13,6 @@ inline void flushFrame()   { if (canvas) canvas->flush(); }
 //                    Coordinate Helpers
 // ================================================================
 
-// Geometric center of the round screen
-static const int16_t CX = LCD_WIDTH  / 2;
-static const int16_t CY = LCD_HEIGHT / 2;
-
-// Outermost radar ring radius (leaves room for N/S/E/W labels)
-static const int16_t RADAR_RADIUS = 180;
-
 // Convert (bearing deg, distance in user units) → screen pixel.
 // Bearing 0° = North (straight up); clockwise positive.
 static void polarToScreen(float bearingDeg, float distance,
@@ -32,8 +25,8 @@ static void polarToScreen(float bearingDeg, float distance,
   if (r > RADAR_RADIUS + 8) r = RADAR_RADIUS + 8;   // pin just past the edge
 
   float rad = bearingDeg * 0.01745329252f;
-  outX = CX + (int16_t)(r * sinf(rad));
-  outY = CY - (int16_t)(r * cosf(rad));     // screen Y grows downward
+  outX = SCREEN_CX + (int16_t)(r * sinf(rad));
+  outY = SCREEN_CY - (int16_t)(r * cosf(rad));     // screen Y grows downward
 }
 
 // Scale a 16-bit RGB565 by intensity (0..255). Used to fade blips
@@ -198,7 +191,7 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   char rngBuf[16];
   snprintf(rngBuf, sizeof(rngBuf), "%d %s",
            currentRangeUnits(), unitsLabel());
-  int16_t tx = CX - ((int16_t)strlen(rngBuf) * 6) / 2;
+  int16_t tx = SCREEN_CX - ((int16_t)strlen(rngBuf) * 6) / 2;
   g->setTextColor(th.textSecondary);
   g->setCursor(tx, 28);
   g->print(rngBuf);
@@ -213,7 +206,7 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   else if (rssi > -70)     { wcolor = th.battHigh; strongSignal = true; }
   else                     { wcolor = th.battMid; }
   
-  drawWiFiIcon(g, LCD_WIDTH - 125, 28, wcolor, strongSignal);
+  drawWiFiIcon(g, WIFI_ICON_X, WIFI_ICON_Y, wcolor, strongSignal);
 }
 
 // Battery indicator near the bottom of the screen.
@@ -231,7 +224,7 @@ static void drawBatteryIndicator(Arduino_GFX* g) {
   const RadarTheme& th = currentTheme();
   uint16_t color = (pct > 60) ? th.battHigh
                               : (pct > 20 ? th.battMid : th.battLow);
-  int bx = CX - 18, by = LCD_HEIGHT - 40;
+  int bx = SCREEN_CX + BATTERY_X_OFFSET, by = BATTERY_Y;
   g->drawRect(bx, by, 32, 14, color);            // body
   g->fillRect(bx + 32, by + 4, 2, 6, color);     // nub
   g->fillRect(bx + 2, by + 2, (28 * pct) / 100, 10, color);
@@ -250,20 +243,20 @@ void renderRadar() {
   for (int i = 1; i <= 4; ++i) {
     int r = (RADAR_RADIUS * i) / 4;
     uint16_t c = (i == 4) ? th.radarRing : th.radarRingDim;
-    g->drawCircle(CX, CY, r, c);
+    g->drawCircle(SCREEN_CX, SCREEN_CY, r, c);
   }
 
   // ── Crosshair / N-S, E-W axes ───────────────────────────────
-  g->drawLine(CX - RADAR_RADIUS, CY, CX + RADAR_RADIUS, CY, th.crosshair);
-  g->drawLine(CX, CY - RADAR_RADIUS, CX, CY + RADAR_RADIUS, th.crosshair);
+  g->drawLine(SCREEN_CX - RADAR_RADIUS, SCREEN_CY, SCREEN_CX + RADAR_RADIUS, SCREEN_CY, th.crosshair);
+  g->drawLine(SCREEN_CX, SCREEN_CY - RADAR_RADIUS, SCREEN_CX, SCREEN_CY + RADAR_RADIUS, th.crosshair);
 
   // ── Compass labels ──────────────────────────────────────────
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.compassRose);
-  g->setCursor(CX - 5,                 CY - RADAR_RADIUS - 22); g->print("N");
-  g->setCursor(CX - 5,                 CY + RADAR_RADIUS + 6);  g->print("S");
-  g->setCursor(CX - RADAR_RADIUS - 18, CY - 7);                 g->print("W");
-  g->setCursor(CX + RADAR_RADIUS + 6,  CY - 7);                 g->print("E");
+  g->setCursor(SCREEN_CX - 5,                 SCREEN_CY - RADAR_RADIUS - 22); g->print("N");
+  g->setCursor(SCREEN_CX - 5,                 SCREEN_CY + RADAR_RADIUS + 3);  g->print("S");
+  g->setCursor(SCREEN_CX - RADAR_RADIUS - 18, SCREEN_CY - 7);                 g->print("W");
+  g->setCursor(SCREEN_CX + RADAR_RADIUS + 6,  SCREEN_CY - 7);                 g->print("E");
 
   // ── Range scale labels on each ring ─────────────────────────
   g->setTextSize(TXT_SMALL);
@@ -273,7 +266,7 @@ void renderRadar() {
     int r = (RADAR_RADIUS * i) / 4;
     int val = (maxR * i) / 4;
     char buf[8]; snprintf(buf, sizeof(buf), "%d", val);
-    g->setCursor(CX + 4, CY - r - 3);
+    g->setCursor(SCREEN_CX + 4, SCREEN_CY - r - 3);
     g->print(buf);
   }
 
@@ -282,11 +275,11 @@ void renderRadar() {
     float a = sweepAngleDeg - i * 5.0f;
     if (a < 0) a += 360.0f;
     float rad = a * 0.01745329252f;
-    int16_t ex = CX + (int16_t)(RADAR_RADIUS * sinf(rad));
-    int16_t ey = CY - (int16_t)(RADAR_RADIUS * cosf(rad));
+    int16_t ex = SCREEN_CX + (int16_t)(RADAR_RADIUS * sinf(rad));
+    int16_t ey = SCREEN_CY - (int16_t)(RADAR_RADIUS * cosf(rad));
     uint16_t c = (i == 0) ? th.sweepLine
                           : fadeColor(th.sweepLine, 180 - i * 60);
-    g->drawLine(CX, CY, ex, ey, c);
+    g->drawLine(SCREEN_CX, SCREEN_CY, ex, ey, c);
   }
 
   // ── Aircraft blips ──────────────────────────────────────────
@@ -301,10 +294,10 @@ void renderRadar() {
       uint16_t base = blipColorFor(a, th);
       uint16_t col  = fadeColor(base, a.intensity);
 
-      // Ring around the currently selected aircraft
-      if (selectedAircraft == i) {
-        g->drawCircle(x, y, 9, th.blipSelected);
-      }
+      // Uncomment to add a ring around the currently selected aircraft
+     // if (selectedAircraft == i) {
+     //   g->drawCircle(x, y, 9, th.blipSelected);
+     // }
 
       drawAircraftIcon(g, x, y, a, col);
 
@@ -337,13 +330,13 @@ void renderFlightDetail() {
   g->fillScreen(th.background);
 
   // Round border
-  g->drawCircle(CX, CY, LCD_RADIUS - 6, th.panelBorder);
-  g->drawCircle(CX, CY, LCD_RADIUS - 7, th.panelBorder);
+  g->drawCircle(SCREEN_CX, SCREEN_CY, LCD_RADIUS - 6, th.panelBorder);
+  g->drawCircle(SCREEN_CX, SCREEN_CY, LCD_RADIUS - 7, th.panelBorder);
 
   if (selectedAircraft < 0 || selectedAircraft >= aircraftCount) {
     g->setTextSize(TXT_MEDIUM);
     g->setTextColor(th.textPrimary);
-    g->setCursor(CX - 70, CY - 8);
+    g->setCursor(SCREEN_CX - 70, SCREEN_CY - 8);
     g->print("No flight");
     flushFrame();
     return;
@@ -397,29 +390,48 @@ void renderFlightDetail() {
       break;
   }
 
-  int y = 80;
+  // Display the aircraft callsign
+  int y = 115;
   g->setTextSize(TXT_LARGE);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 75, y);
+  g->setCursor(SCREEN_CX - 75, y);
   g->print(a.callsign[0] ? a.callsign : "------");
 
+  // Display the aircraft type (centered)
   y += 40;
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
-  g->setCursor(CX - 90, y);
-  g->printf("%s  %s", a.type, typeName);
+  char typeLine[48];
+  snprintf(typeLine, sizeof(typeLine), "%s %s", a.type, typeName);
 
+  int16_t x1, y1;
+  uint16_t w, h;
+  gfx->getTextBounds(typeLine, 0, 0, &x1, &y1, &w, &h);
+
+  g->setCursor(SCREEN_CX - w / 2, y);
+  g->print(typeLine);
+
+  // Display the Altitude
   y += 24;
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 90, y); g->printf("ALT: %ld ft", (long)a.altitude_ft);
+  g->setCursor(SCREEN_CX - 90, y); 
+  g->printf("ALT: %ld ft", (long)a.altitude_ft);
+
+  // Display the Ground Speed
   y += 26;
-  g->setCursor(CX - 90, y); g->printf("SPD: %.0f %s", speed, spdUnit);
+  g->setCursor(SCREEN_CX - 90, y); 
+  g->printf("SPD: %.0f %s", speed, spdUnit);
+
+  // Display the Distance
   y += 26;
-  g->setCursor(CX - 90, y);
+  g->setCursor(SCREEN_CX - 90, y);
   g->printf("DST: %.1f %s", a.distance_units, unitsLabel());
+
+  // Display the Heading
   y += 26;
-  g->setCursor(CX - 90, y); g->printf("HDG: %s %.0f", dirs[dirIdx], a.track);
+  g->setCursor(SCREEN_CX - 90, y); 
+  g->printf("HDG: %s %.0f", dirs[dirIdx], a.track);
 
   // Squawk row — coloured if emergency code
   y += 26;
@@ -429,12 +441,13 @@ void renderFlightDetail() {
     else if (!strcmp(a.squawk, "7600")) sc = th.squawk7600;
     else if (!strcmp(a.squawk, "7700")) sc = th.squawk7700;
     g->setTextColor(sc);
-    g->setCursor(CX - 90, y); g->printf("SQK: %s", a.squawk);
+    g->setCursor(SCREEN_CX - 90, y); 
+    g->printf("SQK: %s", a.squawk);
   }
 
-  g->setTextSize(TXT_SMALL);
-  g->setTextColor(th.textDim);
-  g->setCursor(CX - 75, LCD_HEIGHT - 30);
+//  g->setTextSize(TXT_SMALL);
+//  g->setTextColor(th.textDim);
+//  g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
 
   flushFrame();
@@ -461,7 +474,7 @@ void renderClock() {
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.clockDate);
-  g->setCursor(CX - 18, 90);
+  g->setCursor(SCREEN_CX - 18, 90);
   g->print(days[tm.tm_wday]);
 
   // Big HH:MM
@@ -474,13 +487,13 @@ void renderClock() {
   }
   g->setTextSize(TXT_XXLARGE);
   g->setTextColor(th.clockFace);
-  g->setCursor(CX - 105, CY - 28);
+  g->setCursor(SCREEN_CX - 105, SCREEN_CY - 28);
   g->print(timeBuf);
 
   // Seconds (smaller, right of minutes)
   g->setTextSize(TXT_LARGE);
   g->setTextColor(th.clockSecond);
-  g->setCursor(CX + 108, CY + 18);
+  g->setCursor(SCREEN_CX + 108, SCREEN_CY + 18);
   char secBuf[4]; snprintf(secBuf, sizeof(secBuf), "%02d", tm.tm_sec);
   g->print(secBuf);
 
@@ -488,7 +501,7 @@ void renderClock() {
   if (!settings.use_24h) {
     g->setTextSize(TXT_MEDIUM);
     g->setTextColor(th.clockSecond);
-    g->setCursor(CX + 108, CY - 28);
+    g->setCursor(SCREEN_CX + 108, SCREEN_CY - 28);
     g->print(tm.tm_hour < 12 ? "AM" : "PM");
   }
 
@@ -498,12 +511,12 @@ void renderClock() {
            months[tm.tm_mon], tm.tm_mday, tm.tm_year + 1900);
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.clockDate);
-  g->setCursor(CX - 80, CY + 60);
+  g->setCursor(SCREEN_CX - 80, SCREEN_CY + 60);
   g->print(dateBuf);
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 75, LCD_HEIGHT - 30);
+  g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
 
   drawBatteryIndicator(g);
@@ -520,22 +533,22 @@ void renderStats() {
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 50, 70);
+  g->setCursor(SCREEN_CX - 50, 70);
   g->print("STATS");
 
   int y = 110;
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
-  g->setCursor(CX - 90, y);
+  g->setCursor(SCREEN_CX - 90, y);
   g->printf("Seen total:   %lu", (unsigned long)stats.aircraft_seen_total);
   y += 18;
-  g->setCursor(CX - 90, y);
+  g->setCursor(SCREEN_CX - 90, y);
   g->printf("In range now: %lu", (unsigned long)stats.aircraft_in_range_now);
   y += 26;
 
-  g->setTextColor(th.textPrimary); g->setCursor(CX - 90, y); g->print("Closest:");
+  g->setTextColor(th.textPrimary); g->setCursor(SCREEN_CX - 90, y); g->print("Closest:");
   y += 16;
-  g->setTextColor(th.textSecondary); g->setCursor(CX - 90, y);
+  g->setTextColor(th.textSecondary); g->setCursor(SCREEN_CX - 90, y);
   if (stats.closest_distance > 0) {
     const char* spdLabels[] = {"kt", "mph", "km/h"};
     g->printf("  %s @ %.0f %s",
@@ -544,9 +557,9 @@ void renderStats() {
   } else g->print("  --");
   y += 22;
 
-  g->setTextColor(th.textPrimary); g->setCursor(CX - 90, y); g->print("Highest:");
+  g->setTextColor(th.textPrimary); g->setCursor(SCREEN_CX - 90, y); g->print("Highest:");
   y += 16;
-  g->setTextColor(th.textSecondary); g->setCursor(CX - 90, y);
+  g->setTextColor(th.textSecondary); g->setCursor(SCREEN_CX - 90, y);
   if (stats.highest_altitude_ft > 0) {
     g->printf("  %s @ %ld ft",
               stats.highest_callsign[0] ? stats.highest_callsign : "----",
@@ -554,9 +567,9 @@ void renderStats() {
   } else g->print("  --");
   y += 22;
 
-  g->setTextColor(th.textPrimary); g->setCursor(CX - 90, y); g->print("Fastest:");
+  g->setTextColor(th.textPrimary); g->setCursor(SCREEN_CX - 90, y); g->print("Fastest:");
   y += 16;
-  g->setTextColor(th.textSecondary); g->setCursor(CX - 90, y);
+  g->setTextColor(th.textSecondary); g->setCursor(SCREEN_CX - 90, y);
   if (stats.fastest_speed > 0) {
     const char* spdLabels[] = {"kt", "mph", "km/h"};
     g->printf("  %s @ %.0f %s",
@@ -567,13 +580,13 @@ void renderStats() {
   y += 28;
   uint32_t uptimeSec = millis() / 1000;
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 90, y);
+  g->setCursor(SCREEN_CX - 90, y);
   g->printf("Uptime: %luh %lum",
             (unsigned long)(uptimeSec / 3600),
             (unsigned long)((uptimeSec / 60) % 60));
 
   g->setTextSize(TXT_SMALL);
-  g->setCursor(CX - 75, LCD_HEIGHT - 30);
+  g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
 
   flushFrame();
@@ -614,39 +627,43 @@ static String settingsValueStr(int row) {
 
 // Hit-test helper used by the touch handler in Part 3
 int settingsRowHit(int16_t ty) {
-  if (ty < 105 || ty > 105 + 8 * 18) return -1;
-  return (ty - 105) / 18;
+  int16_t minY = SETTINGS_START_Y - SETTINGS_HIT_MARGIN;
+  int16_t maxY = SETTINGS_START_Y + 8 * SETTINGS_ROW_HEIGHT + SETTINGS_HIT_MARGIN;
+  if (ty < minY || ty > maxY) return -1;
+  return (ty - SETTINGS_START_Y) / SETTINGS_ROW_HEIGHT;
 }
 
 void renderSettingsOverlay() {
   Arduino_GFX* g = dgfx();
   const RadarTheme& th = currentTheme();
   g->fillScreen(th.background);
-  g->drawCircle(CX, CY, LCD_RADIUS - 6, th.panelBorder);
+  g->drawCircle(SCREEN_CX, SCREEN_CY, LCD_RADIUS - 6, th.panelBorder);
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 60, 60);
+  g->setCursor(SCREEN_CX - 60, 60);
   g->print("SETTINGS");
 
   const char* labels[9] = {
     "Theme:", "Range:", "Units:", "Time:",
     "Audio:", "Demo:",  "Bright:", "Log:", "DST:" 
   };
-  int y = 100;
+  int y = SETTINGS_START_Y;
   g->setTextSize(TXT_SMALL);
   for (int i = 0; i < 9; ++i) {
     g->setTextColor(th.textSecondary);
-    g->setCursor(CX - 120, y); g->print(labels[i]);
+    g->setCursor(SCREEN_CX + SETTINGS_LABEL_X, y); 
+    g->print(labels[i]);
     g->setTextColor(th.textPrimary);
-    g->setCursor(CX - 20, y); g->print(settingsValueStr(i));
-    y += 30;
+    g->setCursor(SCREEN_CX + SETTINGS_VALUE_X, y); 
+    g->print(settingsValueStr(i));
+    y += SETTINGS_ROW_HEIGHT;
   }
 
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 100, LCD_HEIGHT - 60);
+  g->setCursor(SCREEN_CX - 100, LCD_HEIGHT - 60);
   g->print("Tap row to change");
-  //g->setCursor(CX - 100, LCD_HEIGHT - 40);
+  //g->setCursor(SCREEN_CX - 100, LCD_HEIGHT - 40);
   //g->print("Swipe right to exit");
   flushFrame();
 }
@@ -683,39 +700,39 @@ void renderApMode() {
   Arduino_GFX* g = dgfx();
   const RadarTheme& th = currentTheme();
   g->fillScreen(th.background);
-  g->drawCircle(CX, CY, LCD_RADIUS - 6, th.panelBorder);
+  g->drawCircle(SCREEN_CX, SCREEN_CY, LCD_RADIUS - 6, th.panelBorder);
 
   g->setTextSize(TXT_LARGE);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 65, 90);
+  g->setCursor(SCREEN_CX - 65, 90);
   g->print("SETUP");
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
-  g->setCursor(CX - 100, 150);
+  g->setCursor(SCREEN_CX - 100, 150);
   g->print("Connect WiFi to:");
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  int16_t sx = CX - ((int16_t)apSsid.length() * 12) / 2 - 40;
+  int16_t sx = SCREEN_CX - ((int16_t)apSsid.length() * 12) / 2 - 40;
   g->setCursor(sx, 175);
   g->print(apSsid);
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
-  g->setCursor(CX - 130, 215);
+  g->setCursor(SCREEN_CX - 130, 215);
   g->print("Then open a browser at:");
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 100, 240);
+  g->setCursor(SCREEN_CX - 100, 240);
   g->print("192.168.4.1");
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 95, LCD_HEIGHT - 80);
+  g->setCursor(SCREEN_CX - 95, LCD_HEIGHT - 80);
   g->print("Portal stays open");
-  g->setCursor(CX - 50, LCD_HEIGHT - 55);
+  g->setCursor(SCREEN_CX - 50, LCD_HEIGHT - 55);
   g->print("for 5 min");
 
   flushFrame();
@@ -732,7 +749,7 @@ int8_t findAircraftNearTouch(int16_t tx, int16_t ty) {
   if (xSemaphoreTake(aircraftMutex, pdMS_TO_TICKS(10)) != pdTRUE) return -1;
 
   int8_t bestIdx = -1;
-  int    bestD2  = 25 * 25;
+  int bestD2 = AIRCRAFT_TAP_RADIUS_SQ;
   for (uint8_t i = 0; i < aircraftCount; ++i) {
     if (!aircraftList[i].in_range) continue;
     int16_t x, y;
