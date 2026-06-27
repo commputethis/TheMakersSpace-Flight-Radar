@@ -70,22 +70,12 @@ The core code (FlightRadar.ino) remains unchanged - only pin definitions differ.
 
 ### Installation
 
-1. Clone this repository:
+Follow the [Build Guide](Build_Guide.md) to:
 
-   ```bash
-   git clone https://github.com/commputethis/TheMakersSpace-Flight-Radar.git
-   ```
-
-2. Open the project in Arduino IDE or PlatformIO
-
-3. Install required libraries via Library Manager
-
-4. Configure your settings in `config.h` (optional):
-   - Default WiFi credentials
-   - ADS-B receiver URL
-   - Display pins
-
-5. Build and upload to your ESP32
+1. Download the code from GitHub
+2. Install Arduino IDE, board support, and libraries
+3. Configure board settings and upload
+4. Verify the display shows "SETUP"
 
 ## Configuration
 

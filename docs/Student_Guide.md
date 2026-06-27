@@ -123,7 +123,7 @@ Everything from the on-screen settings plus:
 
 | Symptom | Try |
 | --- | --- |
-| Black screen, backlight on | Power-cycle (unplug 5 s). Confirm Tools → PSRAM = OPI PSRAM if reflashing. |
+| Black screen, backlight on | Power-cycle (unplug 5 s). Confirm Tools → PSRAM = Enabled if reflashing. |
 | Can't find AP / portal | Hold the BOOT button 5 s after boot — this clears saved WiFi. |
 | No flights showing | Confirm WiFi is connected (top-right "WiFi" indicator green). Try enabling Demo mode to verify rendering. |
 | Touch unresponsive | Restart. The SPD2010 needs a few seconds after boot to leave BIOS mode. |
@@ -136,16 +136,20 @@ Everything from the on-screen settings plus:
 - **Add aircraft types.** Edit `aircraft_types.h` and add entries — they're alphabetically sorted (binary searched).
 - **Add a third theme.** Copy the Amber CRT block in `themes.h`, change the colors, and bump `THEME_COUNT`.
 - **Flash via WiFi.** With OTA enabled, Arduino IDE → Tools → Port shows `flightradar at <ip>` as a network port. No USB needed.
+- **Tweak the layout.** Edit ui_layout.h to adjust button positions, gesture sensitivity, or the settings menu spacing.
+- **Adjust the gesture feel.** Edit `ui_layout.h` and change `SWIPE_THRESHOLD`   or `LONG_PRESS_DURATION_MS` to make touches more/less sensitive.
+- **Move UI elements.** All screen positions live in `ui_layout.h` - try   moving the WiFi icon or battery indicator.
 
 ## Quick Code Tour
 
 ```text
 FlightRadar/
-├── FlightRadar.ino   ← Main sketch (3 parts: init, render, input/network)
-├── board_config.h    ← Every hardware pin lives here
-├── font_config.h     ← Set font sizes
-├── themes.h          ← Color palettes
-└── aircraft_types.h  ← ICAO code → human name lookup
+├── FlightRadar.ino ← Main sketch (3 parts: init, render, input/network)
+├── board_config.h ← Every hardware pin lives here
+├── font_config.h ← Set font sizes
+├── ui_layout.h    ← Screen positions and gesture thresholds
+├── themes.h       ← Color palettes
+└── aircraft_types.h ← ICAO code → human name lookup
 ```
 
 Class project page (with code, schematics, and updates):
