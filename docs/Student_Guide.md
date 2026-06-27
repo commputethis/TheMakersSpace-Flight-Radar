@@ -11,6 +11,12 @@
 
 A self-contained, battery-capable flight radar that pulls live ADS-B data from `adsb.fi` over WiFi and displays nearby aircraft as glowing blips on a 1.46" round display. Doubles as a clock, has multiple themes, a web settings portal, OTA firmware updates, optional flight logging, and a demo mode for showing it off without WiFi.
 
+## Required Hardware
+
+This class uses the **Waveshare ESP32-S3-Touch-LCD-1.46C** board.
+
+**Why this specific board?** It integrates the display, touch, IMU, RTC, and audio on one compact board - perfect for a portable flight radar. While the code can support other hardware (see `board_config.h`), this class focuses on this specific integrated solution.
+
 ## The Board at a Glance
 
 | Component | Chip | Purpose |
@@ -27,31 +33,20 @@ A self-contained, battery-capable flight radar that pulls live ADS-B data from `
 For detailed specifications, pinout diagrams, and schematic:  
 Waveshare ESP32-S3-Touch-LCD-1.46 Documentation [(https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)
 
-## Verification - Serial Monitor (115200 baud)
+## Flashing Your Board
 
-You should see on boot:
+Follow the [Build Guide](Build_Guide.md) to:
 
-``` serial
-[Mem] PSRAM size: 8388608 bytes
-[Mem] Free PSRAM: 8388608 bytes
-[Boot] FlightRadar starting…
-[Boot] Waveshare ESP32-S3-Touch-LCD-1.46C
-[Touch] SPD2010 reset complete
-[IMU] QMI8658 ready
-[FS] LittleFS ready — 1420 KB free
-[LCD] panel + canvas ready
-[WiFi] connected — IP=192.168.1.xxx
-[mDNS] flightradar.local
-[OTA] ready
-[HTTP] web server up on port 80
-[Boot] ready
-```
+1. Download the code from GitHub
+2. Install Arduino IDE, board support, and libraries
+3. Configure board settings and upload
+4. Verify the display shows "SETUP"
 
-If you see `[LCD] canvas->begin() FAILED`, check that PSRAM is enabled in Tools menu.
+**Return here when your board shows the SETUP screen** and continue with First-Time Setup below.
 
 ## First-Time Setup
 
-1. **Power on** the device. The screen shows `SETUP` and a unique WiFi name like `FlightRadar-A1B2`.
+1. **Power on** your already-flashed device. The screen shows `SETUP` and a unique WiFi name like `FlightRadar-A1B2`.
 2. **Join that WiFi** from your phone. The captive portal opens automatically — if not, browse to `192.168.4.1`.
 3. **Pick your home WiFi**, enter your password, and fill in:
    - Home latitude / longitude (default: Fort Wayne, IN)

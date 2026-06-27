@@ -41,7 +41,7 @@ USB Mode .............. Hardware CDC and JTAG
 | 0:25 – 0:55 | Code walkthrough I | Architecture, board_config, settings, ADS-B fetch |
 | 0:55 – 1:00 | Break | |
 | 1:00 – 1:25 | Code walkthrough II | Rendering, sweep math, touch state machine |
-| 1:25 – 1:45 | Flash session | Everyone uploads. WiFi setup. Troubleshooting. |
+| 1:25 – 1:45 | Flash session | Follow [Build Guide](Build_Guide.md). Troubleshoot common issues. |
 | 1:45 – 2:00 | Wrap, Q&A, case handout | Mod ideas, GitHub link, next steps |
 
 Adjust freely. If hands-on flashing reveals problems, eat into the wrap time.

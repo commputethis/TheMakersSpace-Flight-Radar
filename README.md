@@ -19,12 +19,42 @@ A portable ESP32-based flight tracking display that connects to your ADS-B recei
 
 ## Hardware Requirements
 
-- **Waveshare ESP32-S3-Touch-LCD-1.46C** (or compatible ESP32 with sufficient RAM)
+### Recommended Board
+
+- **[Waveshare ESP32-S3-Touch-LCD-1.46C](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)** (SKU 33837)
+  - ESP32-S3 with 8MB PSRAM
+  - 1.46" round LCD (412×412, SPD2010 QSPI controller)
+  - Integrated touch, IMU, RTC, and audio DAC
+  - Onboard I/O expander and battery management
+
+**Purchase:** ~$25-35 from Waveshare (AliExpress/Digi-Key/Mouser) or [Amazon](https://www.amazon.com/dp/B0DS83H2V6?&linkCode=ll2&tag=commputethis-20&linkId=390bd2e4dff3d610c7e1b4d176fbe28e&language=en_US&ref_=as_li_ss_tl)
+
+### Using Different Hardware
+
+This project uses a hardware abstraction layer in `board_config.h`. To add support for a different ESP32 board + display, add a new `#elif defined(BOARD_YOURNAME)` block with your pin definitions. See `board_config.h` for details.
+
+### What You'll Need for Class
+
+- Waveshare ESP32-S3-Touch-LCD-1.46C board
+- USB-C data cable (not charge-only)
+- Computer with Arduino IDE installed
+- WiFi network access
+- (Optional) 3D printed case - see [Case Assembly Guide](docs/Case_Assembly.md)
+
+### Currently Supported
+
+- **Waveshare ESP32-S3-Touch-LCD-1.46C** (SKU 33837)
   - Documentation [(https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)
-- **1.46" round LCD (412×412, SPD2010 controller)** with touchscreen (SPD2010 or compatible)
-- **QMI8658 IMU** (6-axis accelerometer/gyro) - optional but recommended
-- **Audio Amplifier + Speaker** - optional for audio alerts
-- **WiFi Connection** to your ADS-B receiver
+
+### Adding Other Boards
+
+This project uses a hardware abstraction layer in `board_config.h`. To add support for a different ESP32 board + display:
+
+1. Add a new `#elif defined(BOARD_YOURBOARD)` block in `board_config.h`
+2. Define pins for your specific hardware
+3. Select your board with `#define BOARD_YOURBOARD` at the top of `board_config.h`
+
+The core code (FlightRadar.ino) remains unchanged - only pin definitions differ.
 
 ## Software Setup
 
