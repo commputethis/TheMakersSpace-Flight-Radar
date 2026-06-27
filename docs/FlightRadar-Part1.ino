@@ -4,12 +4,19 @@
 // Local Flight Radar for Waveshare ESP32-S3-Touch-LCD-1.46C
 // The Maker's Space — educational class project
 //
-// PART 1: includes, types, globals, NVS settings,
-//         hardware init (display, touch, IMU, RTC, audio, expander),
-//         ADS-B fetch task, demo mode generator
-// PART 2: coordinate math, all screen rendering, sweep animation
-// PART 3: touch/gesture handling, IMU rotation + shake-to-wake,
-//         WiFi/OTA/mDNS/web portal, LittleFS logging, setup()/loop()
+// Broken into 3 parts for covering in class
+//
+// PART 1: Hardware & Data
+//   Why: All the "plumbing" - display drivers, sensors, and network
+//   Key concept: Abstraction - we hide hardware details so Part 2 doesn't care about chips
+//
+// PART 2: Rendering
+//   Why: Visual output - converting data to pixels
+//   Key concept: The framebuffer pattern for smooth animation
+//
+// PART 3: Input & Control
+//   Why: User interaction and system orchestration
+//   Key concept: State machines for gesture recognition
 //
 // Paste all three parts in order into the SAME FlightRadar.ino file.
 //
@@ -21,11 +28,15 @@
 //   - ArduinoOTA, ESPmDNS, WebServer, LittleFS, Preferences (built-in)
 //
 // Board (Tools menu):
-//   Board:       ESP32S3 Dev Module
-//   Flash Size:  16MB
-//   PSRAM:       OPI PSRAM
-//   Partition:   16M Flash (3MB APP / 9.9MB FATFS)  or similar w/ LittleFS
-//   USB Mode:    Hardware CDC and JTAG
+//   Board:            Wavesheare ESP32-S3-Touch-LCD-1.46
+//   USB CDC On Boot:  Enabled
+//   Events Run On:    Core 0
+//   Flash Mode:       QIO 120MHz
+//   Arduino Code Runs On: Core 1
+//   Partition Scheme: 8M with spiffs (3MB APP/1.5MB SPIFFS)
+//   PSRAM:            Enabled
+//   Upload Speed:     921600
+//   USB Mode:         Hardware CDC and JTAG
 // ================================================================
 
 #include <Arduino.h>
@@ -276,7 +287,7 @@ void loadSettings() {
   settings.home_lon          = prefs.getFloat("lon",    DEFAULT_LON);
   settings.tz_offset_seconds = prefs.getInt  ("tz",     -18000);  // EST
   settings.use_24h           = prefs.getBool ("h24",    false);
-  settings.observe_dst       = prefs.getBool("ovserve_dst", true);
+  settings.observe_dst       = prefs.getBool("observe_dst", true);
   settings.range_idx         = prefs.getUChar("range",  2);       // 25 mi
   settings.unit_mode         = prefs.getUChar("unit_mode", 0);  // 0=native default
   settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN_PHOSPHOR);

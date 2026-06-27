@@ -1,4 +1,11 @@
 // ================================================================
+// FlightRadar.ino  —  Part 3 of 3
+// ----------------------------------------------------------------
+// Touch/gesture handling, IMU rotation + shake-to-wake,
+// WiFi/OTA/mDNS/web portal, setup() and loop().
+// ================================================================
+
+// ================================================================
 //                Touch Gesture State Machine
 // ----------------------------------------------------------------
 // We see the touch controller from readTouch() as a stream of

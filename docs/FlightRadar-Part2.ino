@@ -540,7 +540,7 @@ void renderStats() {
     const char* spdLabels[] = {"kt", "mph", "km/h"};
     g->printf("  %s @ %.0f %s",
               stats.fastest_callsign[0] ? stats.fastest_callsign : "----",
-              stats.fastest_speed, spdLabels[settings.unit_mode]);
+              stats.closest_distance, spdLabels[settings.unit_mode]);
   } else g->print("  --");
   y += 22;
 
@@ -635,7 +635,7 @@ void renderSettingsOverlay() {
   };
   int y = 100;
   g->setTextSize(TXT_SMALL);
-  for (int i = 0; i < 8; ++i) {
+  for (int i = 0; i < 9; ++i) {
     g->setTextColor(th.textSecondary);
     g->setCursor(CX - 120, y); g->print(labels[i]);
     g->setTextColor(th.textPrimary);
