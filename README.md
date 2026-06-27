@@ -20,27 +20,11 @@ A portable ESP32-based flight tracking display that connects to your ADS-B recei
 ## Hardware Requirements
 
 - **Waveshare ESP32-S3-Touch-LCD-1.46C** (or compatible ESP32 with sufficient RAM)
-- **1.46" round LCD (SPD2010)** with touchscreen (SPD2010 or compatible)
+  - Documentation [(https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)
+- **1.46" round LCD (412×412, SPD2010 controller)** with touchscreen (SPD2010 or compatible)
 - **QMI8658 IMU** (6-axis accelerometer/gyro) - optional but recommended
 - **Audio Amplifier + Speaker** - optional for audio alerts
 - **WiFi Connection** to your ADS-B receiver
-
-### Pin Connections
-
-| Function | GPIO Pin |
-| ---------- | ---------- |
-| TFT CS | 10 |
-| TFT DC | 9 |
-| TFT RST | 14 |
-| TFT MOSI | 11 |
-| TFT SCK | 12 |
-| TFT MISO | 13 |
-| Touch CS | 6 |
-| Touch IRQ | 5 |
-| IMU SDA | 17 |
-| IMU SCL | 18 |
-| Audio Out | 8 |
-| Backlight | 15 |
 
 ## Software Setup
 

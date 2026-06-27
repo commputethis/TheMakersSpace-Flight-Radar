@@ -24,6 +24,31 @@ A self-contained, battery-capable flight radar that pulls live ADS-B data from `
 | Storage | 16 MB Flash + 8 MB PSRAM + microSD slot | Code, framebuffer, logs |
 | Other | TCA9554 I/O expander, microphone, battery charger | — |
 
+For detailed specifications, pinout diagrams, and schematic:  
+Waveshare ESP32-S3-Touch-LCD-1.46 Documentation [(https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)](https://docs.waveshare.com/ESP32-S3-Touch-LCD-1.46)
+
+## Verification - Serial Monitor (115200 baud)
+
+You should see on boot:
+
+``` serial
+[Mem] PSRAM size: 8388608 bytes
+[Mem] Free PSRAM: 8388608 bytes
+[Boot] FlightRadar starting…
+[Boot] Waveshare ESP32-S3-Touch-LCD-1.46C
+[Touch] SPD2010 reset complete
+[IMU] QMI8658 ready
+[FS] LittleFS ready — 1420 KB free
+[LCD] panel + canvas ready
+[WiFi] connected — IP=192.168.1.xxx
+[mDNS] flightradar.local
+[OTA] ready
+[HTTP] web server up on port 80
+[Boot] ready
+```
+
+If you see `[LCD] canvas->begin() FAILED`, check that PSRAM is enabled in Tools menu.
+
 ## First-Time Setup
 
 1. **Power on** the device. The screen shows `SETUP` and a unique WiFi name like `FlightRadar-A1B2`.
