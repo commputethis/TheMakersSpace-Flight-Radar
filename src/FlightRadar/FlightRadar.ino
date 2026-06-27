@@ -6,12 +6,17 @@
 //
 // Broken into 3 parts for covering in class
 //
-// PART 1: includes, types, globals, NVS settings,
-//         hardware init (display, touch, IMU, RTC, audio, expander),
-//         ADS-B fetch task, demo mode generator
-// PART 2: coordinate math, all screen rendering, sweep animation
-// PART 3: touch/gesture handling, IMU rotation + shake-to-wake,
-//         WiFi/OTA/mDNS/web portal, LittleFS logging, setup()/loop()
+// PART 1: Hardware & Data
+//   Why: All the "plumbing" - display drivers, sensors, and network
+//   Key concept: Abstraction - we hide hardware details so Part 2 doesn't care about chips
+//
+// PART 2: Rendering
+//   Why: Visual output - converting data to pixels
+//   Key concept: The framebuffer pattern for smooth animation
+//
+// PART 3: Input & Control
+//   Why: User interaction and system orchestration
+//   Key concept: State machines for gesture recognition
 //
 // Paste all three parts in order into the SAME FlightRadar.ino file.
 //
@@ -282,7 +287,7 @@ void loadSettings() {
   settings.home_lon          = prefs.getFloat("lon",    DEFAULT_LON);
   settings.tz_offset_seconds = prefs.getInt  ("tz",     -18000);  // EST
   settings.use_24h           = prefs.getBool ("h24",    false);
-  settings.observe_dst       = prefs.getBool("ovserve_dst", true);
+  settings.observe_dst       = prefs.getBool("observe_dst", true);
   settings.range_idx         = prefs.getUChar("range",  2);       // 25 mi
   settings.unit_mode         = prefs.getUChar("unit_mode", 0);  // 0=native default
   settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN_PHOSPHOR);
@@ -1602,7 +1607,7 @@ void renderStats() {
     const char* spdLabels[] = {"kt", "mph", "km/h"};
     g->printf("  %s @ %.0f %s",
               stats.fastest_callsign[0] ? stats.fastest_callsign : "----",
-              stats.fastest_speed, spdLabels[settings.unit_mode]);
+              stats.closest_distance, spdLabels[settings.unit_mode]);
   } else g->print("  --");
   y += 22;
 

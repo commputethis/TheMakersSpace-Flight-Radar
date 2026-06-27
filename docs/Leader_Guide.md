@@ -5,7 +5,7 @@
 - [ ] Each attendee's PC has Arduino IDE installed
 - [ ] Board package: **esp32 by Espressif Systems**
 - [ ] These libraries via Library Manager:
-  - Arduino_GFX_Library (moononournation) **v1.5.7+**
+  - Arduino_GFX_Library (moononournation)
   - ArduinoJson (Benoit Blanchon) v7.x
   - WiFiManager (tzapu) v2.0.x
   - SensorLib (Lewis He)

@@ -19,8 +19,8 @@ A portable ESP32-based flight tracking display that connects to your ADS-B recei
 
 ## Hardware Requirements
 
-- **ESP32-S3 DevKit** (or compatible ESP32 with sufficient RAM)
-- **2.8" TFT LCD Display** with touchscreen (ILI9341 or compatible)
+- **Waveshare ESP32-S3-Touch-LCD-1.46C** (or compatible ESP32 with sufficient RAM)
+- **1.46" round LCD (SPD2010)** with touchscreen (SPD2010 or compatible)
 - **QMI8658 IMU** (6-axis accelerometer/gyro) - optional but recommended
 - **Audio Amplifier + Speaker** - optional for audio alerts
 - **WiFi Connection** to your ADS-B receiver
@@ -156,7 +156,7 @@ Access the settings menu by long pressing on the screen:
 
 ### Touch not working
 
-- Verify touch controller matches your display (XPT2046 common for ILI9341)
+- Verify touch controller matches your display (SPD2010)
 - Check touch CS and IRQ pin connections
 
 ## Advanced Configuration

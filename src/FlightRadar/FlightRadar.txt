@@ -4,12 +4,19 @@
 // Local Flight Radar for Waveshare ESP32-S3-Touch-LCD-1.46C
 // The Maker's Space — educational class project
 //
-// PART 1: includes, types, globals, NVS settings,
-//         hardware init (display, touch, IMU, RTC, audio, expander),
-//         ADS-B fetch task, demo mode generator
-// PART 2: coordinate math, all screen rendering, sweep animation
-// PART 3: touch/gesture handling, IMU rotation + shake-to-wake,
-//         WiFi/OTA/mDNS/web portal, LittleFS logging, setup()/loop()
+// Broken into 3 parts for covering in class
+//
+// PART 1: Hardware & Data
+//   Why: All the "plumbing" - display drivers, sensors, and network
+//   Key concept: Abstraction - we hide hardware details so Part 2 doesn't care about chips
+//
+// PART 2: Rendering
+//   Why: Visual output - converting data to pixels
+//   Key concept: The framebuffer pattern for smooth animation
+//
+// PART 3: Input & Control
+//   Why: User interaction and system orchestration
+//   Key concept: State machines for gesture recognition
 //
 // Paste all three parts in order into the SAME FlightRadar.ino file.
 //
@@ -21,11 +28,15 @@
 //   - ArduinoOTA, ESPmDNS, WebServer, LittleFS, Preferences (built-in)
 //
 // Board (Tools menu):
-//   Board:       ESP32S3 Dev Module
-//   Flash Size:  16MB
-//   PSRAM:       OPI PSRAM
-//   Partition:   16M Flash (3MB APP / 9.9MB FATFS)  or similar w/ LittleFS
-//   USB Mode:    Hardware CDC and JTAG
+//   Board:            Wavesheare ESP32-S3-Touch-LCD-1.46
+//   USB CDC On Boot:  Enabled
+//   Events Run On:    Core 0
+//   Flash Mode:       QIO 120MHz
+//   Arduino Code Runs On: Core 1
+//   Partition Scheme: 8M with spiffs (3MB APP/1.5MB SPIFFS)
+//   PSRAM:            Enabled
+//   Upload Speed:     921600
+//   USB Mode:         Hardware CDC and JTAG
 // ================================================================
 
 #include <Arduino.h>
@@ -276,7 +287,7 @@ void loadSettings() {
   settings.home_lon          = prefs.getFloat("lon",    DEFAULT_LON);
   settings.tz_offset_seconds = prefs.getInt  ("tz",     -18000);  // EST
   settings.use_24h           = prefs.getBool ("h24",    false);
-  settings.observe_dst       = prefs.getBool("ovserve_dst", true);
+  settings.observe_dst       = prefs.getBool("observe_dst", true);
   settings.range_idx         = prefs.getUChar("range",  2);       // 25 mi
   settings.unit_mode         = prefs.getUChar("unit_mode", 0);  // 0=native default
   settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN_PHOSPHOR);
@@ -1143,6 +1154,20 @@ void advanceSweep() {
   xSemaphoreGive(aircraftMutex);
 }
 
+// Draw WiFi icon at (x,y) - simple arcs representing signal waves
+void drawWiFiIcon(Arduino_GFX* g, int16_t x, int16_t y, uint16_t color, bool strong) {
+  // Draw dot at bottom
+  g->fillCircle(x, y + 8, 2, color);
+
+  // Arcs above the dot (opening upward like a rainbow)
+  // Arc angles: 225° to 315° draws the upper semicircle
+  g->drawArc(x, y + 8, 5, 3, 225, 315, color);   // inner arc
+  
+  if (strong) {
+    g->drawArc(x, y + 8, 9, 7, 225, 315, color); // outer arc for strong signal
+  }
+}
+
 // ================================================================
 //                  Aircraft Color & Icon
 // ================================================================
@@ -1245,16 +1270,17 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   g->setCursor(tx, 28);
   g->print(rngBuf);
 
-  // WiFi indicator (right)
+  // WiFi indicator (right) - replace text with icon
   int rssi = WiFi.RSSI();
-  uint16_t wcolor; const char* wlabel;
-  if      (apMode)         { wcolor = th.squawk7600; wlabel = "AP";   }
-  else if (!wifiConnected) { wcolor = th.squawk7700; wlabel = "--";   }
-  else if (rssi > -70)     { wcolor = th.battHigh;   wlabel = "WiFi"; }
-  else                     { wcolor = th.battMid;    wlabel = "WiFi"; }
-  g->setTextColor(wcolor);
-  g->setCursor(LCD_WIDTH - 120, 28);
-  g->print(wlabel);
+  uint16_t wcolor;
+  bool strongSignal = false;
+  
+  if      (apMode)         { wcolor = th.squawk7600; }
+  else if (!wifiConnected) { wcolor = th.squawk7700; }
+  else if (rssi > -70)     { wcolor = th.battHigh; strongSignal = true; }
+  else                     { wcolor = th.battMid; }
+  
+  drawWiFiIcon(g, LCD_WIDTH - 125, 28, wcolor, strongSignal);
 }
 
 // Battery indicator near the bottom of the screen.
@@ -1581,7 +1607,7 @@ void renderStats() {
     const char* spdLabels[] = {"kt", "mph", "km/h"};
     g->printf("  %s @ %.0f %s",
               stats.fastest_callsign[0] ? stats.fastest_callsign : "----",
-              stats.fastest_speed, spdLabels[settings.unit_mode]);
+              stats.closest_distance, spdLabels[settings.unit_mode]);
   } else g->print("  --");
   y += 22;
 
@@ -1687,8 +1713,8 @@ void renderSettingsOverlay() {
   g->setTextColor(th.textDim);
   g->setCursor(CX - 100, LCD_HEIGHT - 60);
   g->print("Tap row to change");
-  g->setCursor(CX - 100, LCD_HEIGHT - 40);
-  g->print("Swipe \xc3\xa2\xc2\x86\xc2\x92 exit");
+  //g->setCursor(CX - 100, LCD_HEIGHT - 40);
+  //g->print("Swipe right to exit");
   flushFrame();
 }
 
@@ -1738,24 +1764,26 @@ void renderApMode() {
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  int16_t sx = CX - ((int16_t)apSsid.length() * 12) / 2;
+  int16_t sx = CX - ((int16_t)apSsid.length() * 12) / 2 - 40;
   g->setCursor(sx, 175);
   g->print(apSsid);
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
-  g->setCursor(CX - 95, 215);
+  g->setCursor(CX - 130, 215);
   g->print("Then open a browser at:");
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 80, 240);
+  g->setCursor(CX - 100, 240);
   g->print("192.168.4.1");
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 110, LCD_HEIGHT - 50);
-  g->print("Portal stays open for 5 min");
+  g->setCursor(CX - 95, LCD_HEIGHT - 80);
+  g->print("Portal stays open");
+  g->setCursor(CX - 50, LCD_HEIGHT - 55);
+  g->print("for 5 min");
 
   flushFrame();
 }

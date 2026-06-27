@@ -44,7 +44,7 @@ A self-contained, battery-capable flight radar that pulls live ADS-B data from `
 | **Long-press** (>500 ms) | Open the settings overlay |
 | **Swipe left** (radar) | Go to Stats |
 | **Swipe down** (radar) | Go to Clock |
-| **Swipe right** (any screen) | Back to radar |
+| **Swipe right** (most screens) | Back to radar |
 | **Drag finger around the outer ring** | Adjust brightness (clockwise = brighter) |
 | **Shake the device** | Wake the screen from dim mode |
 
