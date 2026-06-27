@@ -1377,10 +1377,10 @@ void renderRadar() {
       uint16_t base = blipColorFor(a, th);
       uint16_t col  = fadeColor(base, a.intensity);
 
-      // Ring around the currently selected aircraft
-      if (selectedAircraft == i) {
-        g->drawCircle(x, y, 9, th.blipSelected);
-      }
+      // Uncomment to add a ring around the currently selected aircraft
+     // if (selectedAircraft == i) {
+     //   g->drawCircle(x, y, 9, th.blipSelected);
+     // }
 
       drawAircraftIcon(g, x, y, a, col);
 
