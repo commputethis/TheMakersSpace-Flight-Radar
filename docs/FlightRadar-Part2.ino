@@ -697,24 +697,26 @@ void renderApMode() {
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  int16_t sx = CX - ((int16_t)apSsid.length() * 12) / 2;
+  int16_t sx = CX - ((int16_t)apSsid.length() * 12) / 2 - 40;
   g->setCursor(sx, 175);
   g->print(apSsid);
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textSecondary);
-  g->setCursor(CX - 95, 215);
+  g->setCursor(CX - 130, 215);
   g->print("Then open a browser at:");
 
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.textPrimary);
-  g->setCursor(CX - 80, 240);
+  g->setCursor(CX - 100, 240);
   g->print("192.168.4.1");
 
   g->setTextSize(TXT_SMALL);
   g->setTextColor(th.textDim);
-  g->setCursor(CX - 110, LCD_HEIGHT - 50);
-  g->print("Portal stays open for 5 min");
+  g->setCursor(CX - 95, LCD_HEIGHT - 80);
+  g->print("Portal stays open");
+  g->setCursor(CX - 50, LCD_HEIGHT - 55);
+  g->print("for 5 min");
 
   flushFrame();
 }
@@ -745,9 +747,3 @@ int8_t findAircraftNearTouch(int16_t tx, int16_t ty) {
 }
 
 // ============== End of Part 2 — continue with Part 3 ============
-// ================================================================
-// FlightRadar.ino  —  Part 3 of 3
-// ----------------------------------------------------------------
-// Touch/gesture handling, IMU rotation + shake-to-wake,
-// WiFi/OTA/mDNS/web portal, setup() and loop().
-// ================================================================
