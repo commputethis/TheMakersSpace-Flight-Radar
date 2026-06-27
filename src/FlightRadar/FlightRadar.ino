@@ -1322,7 +1322,7 @@ void renderRadar() {
   g->setTextSize(TXT_MEDIUM);
   g->setTextColor(th.compassRose);
   g->setCursor(SCREEN_CX - 5,                 SCREEN_CY - RADAR_RADIUS - 22); g->print("N");
-  g->setCursor(SCREEN_CX - 5,                 SCREEN_CY + RADAR_RADIUS + 6);  g->print("S");
+  g->setCursor(SCREEN_CX - 5,                 SCREEN_CY + RADAR_RADIUS + 3);  g->print("S");
   g->setCursor(SCREEN_CX - RADAR_RADIUS - 18, SCREEN_CY - 7);                 g->print("W");
   g->setCursor(SCREEN_CX + RADAR_RADIUS + 6,  SCREEN_CY - 7);                 g->print("E");
 
@@ -1459,7 +1459,7 @@ void renderFlightDetail() {
   }
 
   // Display the aircraft callsign
-  int y = 80;
+  int y = 115;
   g->setTextSize(TXT_LARGE);
   g->setTextColor(th.textPrimary);
   g->setCursor(SCREEN_CX - 75, y);
