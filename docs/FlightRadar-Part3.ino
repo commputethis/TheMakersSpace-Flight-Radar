@@ -1,11 +1,4 @@
 // ================================================================
-// FlightRadar.ino  —  Part 3 of 3
-// ----------------------------------------------------------------
-// Touch/gesture handling, IMU rotation + shake-to-wake,
-// WiFi/OTA/mDNS/web portal, setup() and loop().
-// ================================================================
-
-// ================================================================
 //                Touch Gesture State Machine
 // ----------------------------------------------------------------
 // We see the touch controller from readTouch() as a stream of
@@ -341,7 +334,7 @@ void initOTA() {
   ArduinoOTA.onStart([]() {
     if (!gfx) return;
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(3);
+    gfx->setTextSize(TXT_LARGE);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 80, CY - 10);
     gfx->print("OTA...");
@@ -356,7 +349,7 @@ void initOTA() {
   ArduinoOTA.onEnd([]() {
     if (!gfx) return;
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(2);
+    gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 60, CY - 8);
     gfx->print("Updated!");
@@ -375,23 +368,104 @@ void initOTA() {
 // IP). The page renders the current settings, lets you change them,
 // and saves to NVS.  PORTAL_HTML lives in flash to keep RAM free.
 // ================================================================
+const char THEME_GREEN_CSS[] PROGMEM = R"rawliteral(
+  :root {
+    --bg: #0a0f0a;
+    --fg: #33ff33;
+    --accent: #1a331a;
+    --input-bg: #0f1a0f;
+    --input-border: #33ff33;
+    --button-bg: #33ff33;
+    --button-fg: #0a0f0a;
+    --link: #66ff66;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15),
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+)rawliteral";
+
+const char THEME_AMBER_CSS[] PROGMEM = R"rawliteral(
+  :root {
+    --bg: #1a0f00;
+    --fg: #ffb000;
+    --accent: #331a00;
+    --input-bg: #1a0f00;
+    --input-border: #ffb000;
+    --button-bg: #ffb000;
+    --button-fg: #1a0f00;
+    --link: #ffcc33;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15),
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+)rawliteral";
+
 static const char PORTAL_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FlightRadar</title>
 <style>
- body{font-family:system-ui,sans-serif;background:#111;color:#dfd;
-      max-width:520px;margin:0 auto;padding:14px}
- h1{color:#7f7;margin:0 0 8px}
- h2{color:#5d5;margin-top:18px;font-size:1.05em}
+ {{THEME_CSS}}
+ body{
+   font-family:'Courier New', monospace;
+   background:var(--bg);
+   color: var(--fg);
+   max-width:520px;
+   margin:0 auto;
+   padding:14px }
+ h1 {
+   color:var(--fg);
+   text-shadow: 0 0 5px var(--fg);
+   margin:0 0 8px}
+ h2 {
+   color:var(--fg);
+   margin-top:18px;
+   text-shadow: 0 0 5px var(--fg);
+   font-size:1.05em}
  label{display:block;margin-top:10px;font-size:.9em;color:#bdb}
- input,select{width:100%;background:#222;border:1px solid #353;color:#dfd;
-              padding:6px;border-radius:4px;box-sizing:border-box}
+ input,select {
+   width:100%;
+   background: var(--input-bg);
+   border: 1px solid var(--input-border);
+   color: var(--fg);
+   padding:6px;
+   border-radius:4px;
+   box-sizing:border-box }
  input[type=checkbox]{width:auto}
- button{background:#272;border:1px solid #5a5;color:#dfd;padding:9px 14px;
-        margin-top:14px;border-radius:4px;font-size:1em;cursor:pointer}
+ button{
+   background: var(--button-bg);
+   border: 1px solid var(--input-border);
+   color: var(--button-fg);
+   padding: 9px 14px;
+   margin-top: 14px;
+   border-radius: 4px;
+   font-size: 1em;
+   cursor: pointer}
  .row{display:flex;gap:8px} .row>div{flex:1}
- small{color:#7a7}
+ small {color:var(--fg)}
+ a { color: var(--link) }
 </style></head><body>
 <h1>FlightRadar</h1>
 <small>{{HOSTNAME}} &middot; IP {{IP}} &middot; uptime {{UPT}}</small>
@@ -464,6 +538,10 @@ static String renderPortalPage() {
   char uptBuf[24];
   snprintf(uptBuf, sizeof(uptBuf), "%luh %lum",
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60));
+
+  // Theme CSS - 0=Green Phosphor, 1=Amber CRT
+  const char* themeCss = (settings.theme_idx == 1) ? THEME_AMBER_CSS : THEME_GREEN_CSS;
+  html.replace("{{THEME_CSS}}",  themeCss);
 
   html.replace("{{HOSTNAME}}",   String(MDNS_HOSTNAME) + ".local");
   html.replace("{{IP}}",         WiFi.localIP().toString());
@@ -547,7 +625,8 @@ void initWebServer() {
   Serial.println("[HTTP] web server up on port 80");
 }
 
-void setup_test() {
+// Uncomment for additional debugging
+/*void setup_test() {
   Serial.begin(115200);
   delay(300);
   Serial.println("\n[MIN] starting");
@@ -582,13 +661,13 @@ void setup_test() {
 
   Serial.println("[MIN] drawing HELLO");
   gfx->fillScreen(0x0000);
-  gfx->setTextSize(4);
+  gfx->setTextSize(TXT_XLARGE);
   gfx->setTextColor(0xFFFF);
   gfx->setCursor(70, 200);
   gfx->print("HELLO");
   canvas->flush();
   Serial.println("[MIN] done — holding");
-}
+}*/
 
 // ================================================================
 //                          setup()
@@ -598,7 +677,13 @@ void setup_test() {
 // Then spawn the background ADS-B fetch task on core 0.
 // ================================================================
 void setup() {
+  // Keep power on (required for battery operation on Waveshare boards)
+  pinMode(PWR_Control_PIN, OUTPUT);
+  digitalWrite(PWR_Control_PIN, HIGH);
+  pinMode(PWR_KEY_Input_PIN, INPUT);  // Initialize button monitoring
   Serial.begin(115200);
+  delay(300);
+  Serial.println("\n[MIN] starting");
   Serial.printf("[Mem] PSRAM size: %u bytes\n", (unsigned)ESP.getPsramSize());
   Serial.printf("[Mem] Free PSRAM: %u bytes\n", (unsigned)ESP.getFreePsram());
   Serial.printf("[Mem] Free heap:  %u bytes\n", (unsigned)ESP.getFreeHeap());
@@ -632,7 +717,7 @@ void setup() {
   // Splash so the user sees something while WiFi negotiates
   if (gfx) {
     gfx->fillScreen(BLACK);
-    gfx->setTextSize(2);
+    gfx->setTextSize(TXT_MEDIUM);
     gfx->setTextColor(WHITE);
     gfx->setCursor(CX - 70, CY - 8);
     gfx->print("FlightRadar");
@@ -679,6 +764,7 @@ void loop() {
   updateImuRotation();
   checkIdleDim();
   advanceSweep();
+  PWR_Loop();  // Handles long-press detection
 
   // Render at ~30 fps — plenty smooth, leaves CPU for everything else
   static uint32_t lastFrameMs = 0;

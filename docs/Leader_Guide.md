@@ -3,7 +3,7 @@
 ## Pre-Class Checklist (do these the day before)
 
 - [ ] Each attendee's PC has Arduino IDE installed
-- [ ] Board package: **esp32 by Espressif Systems v3.0.2–3.1.1** (NOT newer)
+- [ ] Board package: **esp32 by Espressif Systems**
 - [ ] These libraries via Library Manager:
   - Arduino_GFX_Library (moononournation) **v1.5.7+**
   - ArduinoJson (Benoit Blanchon) v7.x
@@ -19,17 +19,18 @@
 ### Tools menu settings (write on whiteboard)
 
 ```text
-Board ................. ESP32S3 Dev Module
+Board ................. Wavesheare ESP32-S3-Touch-LCD-1.46
 USB CDC On Boot ....... Enabled
-USB Mode .............. Hardware CDC and JTAG
-Flash Mode ............ QIO 80MHz
-Flash Size ............ 16MB (128Mb)
-Partition Scheme ...... 16M Flash (3MB APP/9.9MB FATFS)
-PSRAM ................. OPI PSRAM
+Events Run On ......... Core 0
+Flash Mode ............ QIO 120MHz
+Arduino Code Runs On .. Core 1
+Partition Scheme ...... 8M with spiffs (3MB APP/1.5MB SPIFFS)
+PSRAM ................. Enabled
 Upload Speed .......... 921600
+USB Mode .............. Hardware CDC and JTAG
 ```
 
-**These exact settings are critical.** PSRAM "Disabled" = blank screen. Newer board packages = subtle breakage.
+**These exact settings are critical.** PSRAM "Disabled" = blank screen.
 
 ## Suggested Schedule (2 hours)
 
@@ -61,10 +62,11 @@ Pass an unmounted board around and trace these out:
 
 ### Block 1 — Architecture (5 min)
 
-Open the sketch in Arduino IDE. Point out the **four files**:
+Open the sketch in Arduino IDE. Point out the **five files**:
 
 - `FlightRadar.ino` — main logic in three parts
 - `board_config.h` — *every pin definition* lives here. "If we wanted to support a different board, we'd add another `#elif` block and nothing else changes."
+- `font_config.h — this is where we control font sizes
 - `themes.h` — color palettes
 - `aircraft_types.h` — ICAO code lookup
 

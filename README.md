@@ -106,7 +106,7 @@ The main screen shows a scrollable list of nearby aircraft with:
 - **Callsign**: Flight identifier (or ICAO hex if unknown)
 - **Distance**: From your location
 - **Altitude**: In feet
-- **Speed**: In knots, mph, or km/h depending on settings
+- **Speed**:    In knots, mph, or km/h depending on settings
 
 ### Aircraft Details
 
@@ -119,12 +119,12 @@ Tap any aircraft to view detailed information:
 
 ### Settings Menu
 
-Access the settings menu by tapping the gear icon or pressing the settings button:
+Access the settings menu by long pressing on the screen:
 
-- **Theme**: Toggle between light and dark modes
+- **Theme**: Toggle between Green Phosphor and Amber CRT modes
 - **Range**: Change detection radius
 - **Units**: Switch between Native/Miles/Metric
-- **Time**: Adjust timezone and DST
+- **Time**: Switch clock between 12h and 24h format
 - **Audio**: Toggle audio alerts
 - **Demo**: Enable demo mode with simulated aircraft
 - **Brightness**: Adjust screen backlight
@@ -142,39 +142,30 @@ Access the settings menu by tapping the gear icon or pressing the settings butto
 
 - Check backlight pin connection
 - Verify TFT driver matches your display (ILI9341, ST7789, etc.)
-- Check wiring connections
 
 ### No aircraft showing
 
 - Verify ADS-B receiver URL in settings
-- Ensure receiver is on same network as ESP32
-- Check that receiver is receiving data (antenna connected?)
 - Try increasing range in settings
 
 ### Crash/Restart loop
 
 - May indicate insufficient RAM - try reducing `ADSB_MAX_AIRCRAFT` in config
-- Check serial monitor for Guru Meditation errors
+- Check serial monitor for errors
 - Ensure power supply can deliver sufficient current (500mA+)
 
 ### Touch not working
 
 - Verify touch controller matches your display (XPT2046 common for ILI9341)
 - Check touch CS and IRQ pin connections
-- Calibrate touchscreen if needed
 
 ## Advanced Configuration
 
 ### Custom Aircraft Database
 
-Place an `aircraft.csv` file on SD card with columns:
+Edit `aircraft_types.h` to add more types of aircraft
 
-```text
-icao_type,callsign,registration,type
-A320,N123UA,N123UA,A320-200
-```
-
-### API Endpoints
+### API Endpoints (future add)
 
 The web interface exposes these endpoints:
 

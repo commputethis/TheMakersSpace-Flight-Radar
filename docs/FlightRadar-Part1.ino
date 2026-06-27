@@ -50,6 +50,7 @@
 #include "board_config.h"
 #include "themes.h"
 #include "aircraft_types.h"
+#include "font_config.h"
 
 #include "SensorQMI8658.hpp"      // From SensorLib (Lewis He)
 
@@ -362,6 +363,19 @@ void initDisplay() {
 void setBrightness(uint8_t b) {
   if (b < BRIGHTNESS_MIN) b = BRIGHTNESS_MIN;
   ledcWrite(LCD_BL_PIN, b);
+}
+
+void PWR_Loop(void) {
+  static uint16_t pressTime = 0;
+  
+  if(!digitalRead(PWR_KEY_Input_PIN)) {  // Button pressed
+    pressTime++;
+    if(pressTime >= 200) {  // 20 seconds = shutdown
+      digitalWrite(PWR_Control_PIN, LOW);  // Power off
+    }
+  } else {
+    pressTime = 0;
+  }
 }
 
 // ================================================================

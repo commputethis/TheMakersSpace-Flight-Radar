@@ -115,7 +115,6 @@ Everything from the on-screen settings plus:
 - **Modify the code.** Try changing a theme color, adding a new range preset, or tweaking the sweep speed.
 - **Add aircraft types.** Edit `aircraft_types.h` and add entries — they're alphabetically sorted (binary searched).
 - **Add a third theme.** Copy the Amber CRT block in `themes.h`, change the colors, and bump `THEME_COUNT`.
-- **Build a case.** Co-leader's case will house the board. Share what you do with it!
 - **Flash via WiFi.** With OTA enabled, Arduino IDE → Tools → Port shows `flightradar at <ip>` as a network port. No USB needed.
 
 ## Quick Code Tour
@@ -124,13 +123,14 @@ Everything from the on-screen settings plus:
 FlightRadar/
 ├── FlightRadar.ino   ← Main sketch (3 parts: init, render, input/network)
 ├── board_config.h    ← Every hardware pin lives here
+├── font_config.h     ← Set font sizes
 ├── themes.h          ← Color palettes
 └── aircraft_types.h  ← ICAO code → human name lookup
 ```
 
 Class project page (with code, schematics, and updates):
 
-> *[fill in your GitHub URL here]*
+> [https://github.com/commputethis/TheMakersSpace-Flight-Radar](https://github.com/commputethis/TheMakersSpace-Flight-Radar)
 
 ```text
 ═══════════════════════════════════════════════════════════════════

@@ -4,6 +4,8 @@
 // Local Flight Radar for Waveshare ESP32-S3-Touch-LCD-1.46C
 // The Maker's Space — educational class project
 //
+// Broken into 3 parts for covering in class
+//
 // PART 1: includes, types, globals, NVS settings,
 //         hardware init (display, touch, IMU, RTC, audio, expander),
 //         ADS-B fetch task, demo mode generator
@@ -21,11 +23,15 @@
 //   - ArduinoOTA, ESPmDNS, WebServer, LittleFS, Preferences (built-in)
 //
 // Board (Tools menu):
-//   Board:       ESP32S3 Dev Module
-//   Flash Size:  16MB
-//   PSRAM:       OPI PSRAM
-//   Partition:   16M Flash (3MB APP / 9.9MB FATFS)  or similar w/ LittleFS
-//   USB Mode:    Hardware CDC and JTAG
+//   Board:            Wavesheare ESP32-S3-Touch-LCD-1.46
+//   USB CDC On Boot:  Enabled
+//   Events Run On:    Core 0
+//   Flash Mode:       QIO 120MHz
+//   Arduino Code Runs On: Core 1
+//   Partition Scheme: 8M with spiffs (3MB APP/1.5MB SPIFFS)
+//   PSRAM:            Enabled
+//   Upload Speed:     921600
+//   USB Mode:         Hardware CDC and JTAG
 // ================================================================
 
 #include <Arduino.h>
