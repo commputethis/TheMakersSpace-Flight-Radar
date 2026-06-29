@@ -306,7 +306,7 @@ void loadSettings() {
   settings.observe_dst       = prefs.getBool("observe_dst", true);
   settings.range_idx         = prefs.getUChar("range",  2);       // 25 mi
   settings.unit_mode         = prefs.getUChar("unit_mode", 0);  // 0=native default
-  settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN_PHOSPHOR);
+  settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN);
   settings.brightness        = prefs.getUChar("bright", BRIGHTNESS_DEFAULT);
   settings.min_altitude_ft   = prefs.getInt  ("minalt", 500);
   settings.audio_enabled     = prefs.getBool ("audio",  true);
@@ -1292,24 +1292,48 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   drawWiFiIcon(g, WIFI_ICON_X, WIFI_ICON_Y, wcolor, strongSignal);
 }
 
+// Returns battery percentage (0-100) based on ADC voltage reading.
+// Uses voltage divider formula: (ADC_mV * 3.0 / 1000.0) / offset
+// Returns 100% if BATT_ADC_PIN is disabled (no battery monitoring).
+// Calibration: 4.2V = 100%, 3.3V = 0% (linear interpolation).
+int getBatteryPercentage() {
+  if (BATT_ADC_PIN < 0) return 100;  // No battery monitoring
+  int raw = analogReadMilliVolts(BATT_ADC_PIN);
+  float v = (raw * 3.0 / 1000.0) / Measurement_offset;
+  int pct = (int)((v - 3.3f) / 0.9f * 100.0f);
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+  return pct;
+}
+
 // Battery indicator near the bottom of the screen.
 // Skipped if BATT_ADC_PIN < 0 (the production schematic should be
 // checked to confirm which pin reads the battery divider).
-static void drawBatteryIndicator(Arduino_GFX* g) {
-  if (BATT_ADC_PIN < 0) return;
-  int raw = analogReadMilliVolts(BATT_ADC_PIN);
-  float v = (raw * 3.0 / 1000.0) / Measurement_offset;
-  // Crude linear map: 4.2 V = 100 %, 3.3 V = 0 %
-  int pct = (int)((v - 3.3f) / 0.9f * 100.0f);
-  if (pct < 0)   pct = 0;
-  if (pct > 100) pct = 100;
-
+void drawBatteryIndicator(Arduino_GFX* g) {
+  int pct = getBatteryPercentage();
+  
+  // Only show on clock screen unless battery is low
+  if (currentScreen != SCREEN_CLOCK && pct > BATTERY_LOW_THRESHOLD) {
+    return;
+  }
+  
   const RadarTheme& th = currentTheme();
-  uint16_t color = (pct > 60) ? th.battHigh
-                              : (pct > 20 ? th.battMid : th.battLow);
-  int bx = SCREEN_CX + BATTERY_X_OFFSET, by = BATTERY_Y;
-  g->drawRect(bx, by, 32, 14, color);            // body
-  g->fillRect(bx + 32, by + 4, 2, 6, color);     // nub
+  uint16_t color;
+  
+  // Theme-appropriate colors
+  if (pct >= 75) {
+    color = th.battHigh;        // Bright theme color (green or amber)
+  } else if (pct >= 50) {
+    color = th.battMid;         // Medium theme color
+  } else if (pct >= BATTERY_LOW_THRESHOLD) {
+    color = th.battLow;         // Dim/warning theme color
+  } else {
+    color = th.squawk7700;      // Emergency red for critical
+  }
+  
+  int bx = SCREEN_CX - 18, by = BATTERY_Y;
+  g->drawRect(bx, by, 32, 14, color);
+  g->fillRect(bx + 32, by + 4, 2, 6, color);
   g->fillRect(bx + 2, by + 2, (28 * pct) / 100, 10, color);
 }
 
@@ -1396,7 +1420,7 @@ void renderRadar() {
   }
 
   drawTopStatusStrip(g);
-//  drawBatteryIndicator(g);
+  drawBatteryIndicator(g); // Will auto-show only if battery is low
 
   flushFrame();
 }
@@ -1532,6 +1556,8 @@ void renderFlightDetail() {
 //  g->setTextColor(th.textDim);
 //  g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
+
+  drawBatteryIndicator(g);  // Will auto-show only if battery is low
 
   flushFrame();
 }
@@ -1671,6 +1697,8 @@ void renderStats() {
   g->setTextSize(TXT_SMALL);
   g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
+
+  drawBatteryIndicator(g);  // Will auto-show only if battery is low
 
   flushFrame();
 }
@@ -2278,6 +2306,87 @@ const char THEME_AMBER_CSS[] PROGMEM = R"rawliteral(
   }
 )rawliteral";
 
+const char THEME_BLUE_CSS[] PROGMEM = R"rawliteral(
+ :root {
+   --bg: #000510;
+   --fg: #00ffff;
+   --accent: #001a33;
+   --input-bg: #000a1a;
+   --input-border: #00ffff;
+   --button-bg: #00ffff;
+   --button-fg: #000510;
+   --link: #66ffff;
+ }
+ body::after {
+   content: "";
+   position: fixed;
+   top: 0; left: 0; width: 100%; height: 100%;
+   background: repeating-linear-gradient(
+     0deg,
+     rgba(0,0,0,0.15),
+     rgba(0,0,0,0.15) 1px,
+     transparent 1px,
+     transparent 2px
+   );
+   pointer-events: none;
+   z-index: 999;
+ }
+)rawliteral";
+
+const char THEME_RED_CSS[] PROGMEM = R"rawliteral(
+ :root {
+   --bg: #1a0500;
+   --fg: #ff3333;
+   --accent: #330a00;
+   --input-bg: #1a0500;
+   --input-border: #ff3333;
+   --button-bg: #ff3333;
+   --button-fg: #1a0500;
+   --link: #ff6666;
+ }
+ body::after {
+   content: "";
+   position: fixed;
+   top: 0; left: 0; width: 100%; height: 100%;
+   background: repeating-linear-gradient(
+     0deg,
+     rgba(0,0,0,0.15),
+     rgba(0,0,0,0.15) 1px,
+     transparent 1px,
+     transparent 2px
+   );
+   pointer-events: none;
+   z-index: 999;
+ }
+)rawliteral";
+
+const char THEME_GRAY_CSS[] PROGMEM = R"rawliteral(
+ :root {
+   --bg: #0a0a0a;
+   --fg: #ffffff;
+   --accent: #1a1a1a;
+   --input-bg: #0f0f0f;
+   --input-border: #ffffff;
+   --button-bg: #ffffff;
+   --button-fg: #0a0a0a;
+   --link: #cccccc;
+ }
+ body::after {
+   content: "";
+   position: fixed;
+   top: 0; left: 0; width: 100%; height: 100%;
+   background: repeating-linear-gradient(
+     0deg,
+     rgba(0,0,0,0.15),
+     rgba(0,0,0,0.15) 1px,
+     transparent 1px,
+     transparent 2px
+   );
+   pointer-events: none;
+   z-index: 999;
+ }
+)rawliteral";
+
 static const char PORTAL_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -2395,9 +2504,17 @@ static String renderPortalPage() {
   snprintf(uptBuf, sizeof(uptBuf), "%luh %lum",
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60));
 
-  // Theme CSS - 0=Green Phosphor, 1=Amber CRT
-  const char* themeCss = (settings.theme_idx == 1) ? THEME_AMBER_CSS : THEME_GREEN_CSS;
-  html.replace("{{THEME_CSS}}",  themeCss);
+  // Theme CSS selection for all 5 themes
+  const char* themeCss;
+  switch (settings.theme_idx) {
+    case THEME_AMBER:     themeCss = THEME_AMBER_CSS; break;
+    case THEME_DEEP_BLUE: themeCss = THEME_BLUE_CSS;  break;
+    case THEME_CRIMSON:   themeCss = THEME_RED_CSS;   break;
+    case THEME_NOIR:      themeCss = THEME_GRAY_CSS;  break;
+    case THEME_GREEN:
+    default:              themeCss = THEME_GREEN_CSS; break;
+  }
+  html.replace("{{THEME_CSS}}", themeCss);
 
   html.replace("{{HOSTNAME}}",   String(MDNS_HOSTNAME) + ".local");
   html.replace("{{IP}}",         WiFi.localIP().toString());

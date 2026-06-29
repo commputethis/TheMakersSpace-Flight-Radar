@@ -306,7 +306,7 @@ void loadSettings() {
   settings.observe_dst       = prefs.getBool("observe_dst", true);
   settings.range_idx         = prefs.getUChar("range",  2);       // 25 mi
   settings.unit_mode         = prefs.getUChar("unit_mode", 0);  // 0=native default
-  settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN_PHOSPHOR);
+  settings.theme_idx         = prefs.getUChar("theme",  THEME_GREEN);
   settings.brightness        = prefs.getUChar("bright", BRIGHTNESS_DEFAULT);
   settings.min_altitude_ft   = prefs.getInt  ("minalt", 500);
   settings.audio_enabled     = prefs.getBool ("audio",  true);

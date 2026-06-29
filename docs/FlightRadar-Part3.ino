@@ -429,6 +429,87 @@ const char THEME_AMBER_CSS[] PROGMEM = R"rawliteral(
   }
 )rawliteral";
 
+const char THEME_BLUE_CSS[] PROGMEM = R"rawliteral(
+ :root {
+   --bg: #000510;
+   --fg: #00ffff;
+   --accent: #001a33;
+   --input-bg: #000a1a;
+   --input-border: #00ffff;
+   --button-bg: #00ffff;
+   --button-fg: #000510;
+   --link: #66ffff;
+ }
+ body::after {
+   content: "";
+   position: fixed;
+   top: 0; left: 0; width: 100%; height: 100%;
+   background: repeating-linear-gradient(
+     0deg,
+     rgba(0,0,0,0.15),
+     rgba(0,0,0,0.15) 1px,
+     transparent 1px,
+     transparent 2px
+   );
+   pointer-events: none;
+   z-index: 999;
+ }
+)rawliteral";
+
+const char THEME_RED_CSS[] PROGMEM = R"rawliteral(
+ :root {
+   --bg: #1a0500;
+   --fg: #ff3333;
+   --accent: #330a00;
+   --input-bg: #1a0500;
+   --input-border: #ff3333;
+   --button-bg: #ff3333;
+   --button-fg: #1a0500;
+   --link: #ff6666;
+ }
+ body::after {
+   content: "";
+   position: fixed;
+   top: 0; left: 0; width: 100%; height: 100%;
+   background: repeating-linear-gradient(
+     0deg,
+     rgba(0,0,0,0.15),
+     rgba(0,0,0,0.15) 1px,
+     transparent 1px,
+     transparent 2px
+   );
+   pointer-events: none;
+   z-index: 999;
+ }
+)rawliteral";
+
+const char THEME_GRAY_CSS[] PROGMEM = R"rawliteral(
+ :root {
+   --bg: #0a0a0a;
+   --fg: #ffffff;
+   --accent: #1a1a1a;
+   --input-bg: #0f0f0f;
+   --input-border: #ffffff;
+   --button-bg: #ffffff;
+   --button-fg: #0a0a0a;
+   --link: #cccccc;
+ }
+ body::after {
+   content: "";
+   position: fixed;
+   top: 0; left: 0; width: 100%; height: 100%;
+   background: repeating-linear-gradient(
+     0deg,
+     rgba(0,0,0,0.15),
+     rgba(0,0,0,0.15) 1px,
+     transparent 1px,
+     transparent 2px
+   );
+   pointer-events: none;
+   z-index: 999;
+ }
+)rawliteral";
+
 static const char PORTAL_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -546,9 +627,17 @@ static String renderPortalPage() {
   snprintf(uptBuf, sizeof(uptBuf), "%luh %lum",
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60));
 
-  // Theme CSS - 0=Green Phosphor, 1=Amber CRT
-  const char* themeCss = (settings.theme_idx == 1) ? THEME_AMBER_CSS : THEME_GREEN_CSS;
-  html.replace("{{THEME_CSS}}",  themeCss);
+  // Theme CSS selection for all 5 themes
+  const char* themeCss;
+  switch (settings.theme_idx) {
+    case THEME_AMBER:     themeCss = THEME_AMBER_CSS; break;
+    case THEME_DEEP_BLUE: themeCss = THEME_BLUE_CSS;  break;
+    case THEME_CRIMSON:   themeCss = THEME_RED_CSS;   break;
+    case THEME_NOIR:      themeCss = THEME_GRAY_CSS;  break;
+    case THEME_GREEN:
+    default:              themeCss = THEME_GREEN_CSS; break;
+  }
+  html.replace("{{THEME_CSS}}", themeCss);
 
   html.replace("{{HOSTNAME}}",   String(MDNS_HOSTNAME) + ".local");
   html.replace("{{IP}}",         WiFi.localIP().toString());

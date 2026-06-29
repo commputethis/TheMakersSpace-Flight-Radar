@@ -41,6 +41,7 @@ static const int16_t WIFI_ICON_Y = 28;
 static const int16_t BATTERY_Y = LCD_HEIGHT - 40;
 static const int16_t BATTERY_X = LCD_WIDTH - 125;
 static const int16_t BATTERY_X_OFFSET = 18;
+static const int16_t BATTERY_LOW_THRESHOLD = 25;  // Show everywhere when below this
 
 // ----------------------------------------------------------------
 // Edge Brightness Control

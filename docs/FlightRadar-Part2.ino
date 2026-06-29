@@ -209,24 +209,48 @@ static void drawTopStatusStrip(Arduino_GFX* g) {
   drawWiFiIcon(g, WIFI_ICON_X, WIFI_ICON_Y, wcolor, strongSignal);
 }
 
+// Returns battery percentage (0-100) based on ADC voltage reading.
+// Uses voltage divider formula: (ADC_mV * 3.0 / 1000.0) / offset
+// Returns 100% if BATT_ADC_PIN is disabled (no battery monitoring).
+// Calibration: 4.2V = 100%, 3.3V = 0% (linear interpolation).
+int getBatteryPercentage() {
+  if (BATT_ADC_PIN < 0) return 100;  // No battery monitoring
+  int raw = analogReadMilliVolts(BATT_ADC_PIN);
+  float v = (raw * 3.0 / 1000.0) / Measurement_offset;
+  int pct = (int)((v - 3.3f) / 0.9f * 100.0f);
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+  return pct;
+}
+
 // Battery indicator near the bottom of the screen.
 // Skipped if BATT_ADC_PIN < 0 (the production schematic should be
 // checked to confirm which pin reads the battery divider).
-static void drawBatteryIndicator(Arduino_GFX* g) {
-  if (BATT_ADC_PIN < 0) return;
-  int raw = analogReadMilliVolts(BATT_ADC_PIN);
-  float v = (raw * 3.0 / 1000.0) / Measurement_offset;
-  // Crude linear map: 4.2 V = 100 %, 3.3 V = 0 %
-  int pct = (int)((v - 3.3f) / 0.9f * 100.0f);
-  if (pct < 0)   pct = 0;
-  if (pct > 100) pct = 100;
-
+void drawBatteryIndicator(Arduino_GFX* g) {
+  int pct = getBatteryPercentage();
+  
+  // Only show on clock screen unless battery is low
+  if (currentScreen != SCREEN_CLOCK && pct > BATTERY_LOW_THRESHOLD) {
+    return;
+  }
+  
   const RadarTheme& th = currentTheme();
-  uint16_t color = (pct > 60) ? th.battHigh
-                              : (pct > 20 ? th.battMid : th.battLow);
-  int bx = SCREEN_CX + BATTERY_X_OFFSET, by = BATTERY_Y;
-  g->drawRect(bx, by, 32, 14, color);            // body
-  g->fillRect(bx + 32, by + 4, 2, 6, color);     // nub
+  uint16_t color;
+  
+  // Theme-appropriate colors
+  if (pct >= 75) {
+    color = th.battHigh;        // Bright theme color (green or amber)
+  } else if (pct >= 50) {
+    color = th.battMid;         // Medium theme color
+  } else if (pct >= BATTERY_LOW_THRESHOLD) {
+    color = th.battLow;         // Dim/warning theme color
+  } else {
+    color = th.squawk7700;      // Emergency red for critical
+  }
+  
+  int bx = SCREEN_CX - 18, by = BATTERY_Y;
+  g->drawRect(bx, by, 32, 14, color);
+  g->fillRect(bx + 32, by + 4, 2, 6, color);
   g->fillRect(bx + 2, by + 2, (28 * pct) / 100, 10, color);
 }
 
@@ -313,7 +337,7 @@ void renderRadar() {
   }
 
   drawTopStatusStrip(g);
-//  drawBatteryIndicator(g);
+  drawBatteryIndicator(g); // Will auto-show only if battery is low
 
   flushFrame();
 }
@@ -449,6 +473,8 @@ void renderFlightDetail() {
 //  g->setTextColor(th.textDim);
 //  g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
+
+  drawBatteryIndicator(g);  // Will auto-show only if battery is low
 
   flushFrame();
 }
@@ -588,6 +614,8 @@ void renderStats() {
   g->setTextSize(TXT_SMALL);
   g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
+
+  drawBatteryIndicator(g);  // Will auto-show only if battery is low
 
   flushFrame();
 }

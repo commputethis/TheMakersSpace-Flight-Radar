@@ -9,12 +9,12 @@
   - ArduinoJson (Benoit Blanchon) v7.x
   - WiFiManager (tzapu) v2.0.x
   - SensorLib (Lewis He)
-- [ ] All four sketch files in attendees' `FlightRadar/` folder (`.ino` + 3 headers)
+- [ ] All five sketch files in attendees' `FlightRadar/` folder (`.ino` + 4 headers)
 - [ ] Tools settings written on whiteboard (see below)
 - [ ] One assembled, working device for demo
-- [ ] Spare USB-C cables (you'll need them)
-- [ ] **Note your venue's WiFi password** — attendees will join their devices to it
-- [ ] Co-leader's cases printed/cut and ready
+- [X] Spare USB-C cables (you'll need them)
+- [X] **Note your venue's WiFi password** — attendees will join their devices to it
+- [ ] Cases printed/cut and ready
 
 ### Tools menu settings (write on whiteboard)
 
