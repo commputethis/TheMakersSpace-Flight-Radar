@@ -189,7 +189,7 @@ Contributions welcome! Please submit pull requests or open issues for:
 
 ## License
 
-MIT License - See LICENSE file for details
+AGPL-3.0 License - See LICENSE file for details
 
 ## Acknowledgments
 
