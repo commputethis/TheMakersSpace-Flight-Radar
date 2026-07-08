@@ -73,8 +73,8 @@ void advanceSweep() {
     } else {
       // Decay smoothly so it never disappears completely
       int v = (int)(255.0f - (ang / 360.0f) * 220.0f);
-      if (v < 35) v = 35;
-      if (v < a.intensity - 4) a.intensity = (uint8_t)v;
+      if (v < 80) v = 80;
+      if (v < a.intensity - 2) a.intensity = (uint8_t)v;
     }
   }
   xSemaphoreGive(aircraftMutex);
@@ -326,7 +326,7 @@ void renderRadar() {
       drawAircraftIcon(g, x, y, a, col);
 
       // Callsign label (only when blip is bright enough to read)
-      if (a.callsign[0] && a.intensity > 80) {
+      if (a.callsign[0] && a.intensity > 60) {
         g->setTextSize(TXT_SMALL);
         g->setTextColor(fadeColor(th.textSecondary, a.intensity));
         g->setCursor(x + 6, y - 6);
