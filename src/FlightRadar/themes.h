@@ -130,8 +130,8 @@ static const RadarTheme THEME_AMBER_DATA PROGMEM = {
 static const RadarTheme THEME_DEEP_BLUE_DATA PROGMEM = {
   "Deep Blue",            // name
   RGB565(  0,   0,   8),  // background
-  RGB565(  0,   0,  32),  // radarRing
-  RGB565(  0,   0,  16),  // radarRingDim
+  RGB565(  0,  64, 128),  // radarRing
+  RGB565(  0,  32,  64),  // radarRingDim
   RGB565(  0,  60,   0),  // sweepLine
   RGB565(  0,  30,   0),  // sweepFade
   RGB565(  0,  64,  64),  // crosshair
@@ -164,8 +164,8 @@ static const RadarTheme THEME_DEEP_BLUE_DATA PROGMEM = {
 static const RadarTheme THEME_CRIMSON_DATA PROGMEM = {
   "Crimson",              // name
   RGB565( 32,   0,   0),  // background
-  RGB565( 64,   0,   0),  // radarRing
-  RGB565( 48,   0,   0),  // radarRingDim
+  RGB565(128,   0,   0),  // radarRing
+  RGB565( 64,   0,   0),  // radarRingDim
   RGB565( 88,   0,   0),  // sweepLine
   RGB565( 44,   0,   0),  // sweepFade
   RGB565( 88,   0,   0),  // crosshair
