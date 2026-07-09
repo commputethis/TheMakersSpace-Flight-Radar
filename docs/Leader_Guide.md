@@ -11,10 +11,10 @@
   - SensorLib (Lewis He)
 - [ ] All five sketch files in attendees' `FlightRadar/` folder (`.ino` + 4 headers)
 - [ ] Tools settings written on whiteboard (see below)
-- [ ] One assembled, working device for demo
+- [X] One assembled, working device for demo
 - [X] Spare USB-C cables (you'll need them)
 - [X] **Note your venue's WiFi password** — attendees will join their devices to it
-- [ ] Cases printed/cut and ready
+- [X] Cases printed and ready
 
 ### Tools menu settings (write on whiteboard)
 
@@ -110,7 +110,7 @@ Then `advanceSweep()`:
 
 - The sweep rotates ~60°/sec.
 - For each aircraft, we compute the angular distance behind the sweep line.
-- Just-passed-over = bright (255). The further behind, the dimmer (down to 35).
+- Just-passed-over = bright (255). The further behind, the dimmer (down to 80).
 - This is the **phosphor afterglow** effect from real CRT radar.
 
 ### Block 6 — Touch State Machine (10 min)

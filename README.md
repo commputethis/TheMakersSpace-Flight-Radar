@@ -70,7 +70,7 @@ The core code (FlightRadar.ino) remains unchanged - only pin definitions differ.
 
 ### Installation
 
-Follow the [Build Guide](Build_Guide.md) to:
+Follow the [Build Guide](./docs/Build_Guide.md) to:
 
 1. Download the code from GitHub
 2. Install Arduino IDE, board support, and libraries

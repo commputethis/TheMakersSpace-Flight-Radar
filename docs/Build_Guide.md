@@ -38,7 +38,7 @@ Desktop/
     │       ├── board_config.h
     │       ├── aircraft_types.h
     │       ├── themes.h
-            ├── ui_layout.h
+    |       ├── ui_layout.h
     │       └── font_config.h
     ├── docs/
     └── README.md
@@ -47,7 +47,7 @@ Desktop/
 ### Option B: Use Git (If Installed)
 
 ```bash
-cd Desktop
+cd Desktop # or wherever you want to store the git repository
 git clone https://github.com/commputethis/TheMakersSpace-Flight-Radar.git
 ```
 
@@ -169,6 +169,7 @@ Use the BOOT button method:
 #### Error: "A fatal error occurred: Failed to write to target RAM"
 
 - Press the **RST** button on the board
+  - Might be labeled **PWR**
 - Try upload again with BOOT button held
 
 **Success:** You should see:
@@ -225,8 +226,8 @@ If you see this, **success!** Proceed to WiFi configuration in the [Student Guid
 | **No port appears** | Try different USB cable; install CP210x driver (Windows); wait 30s (Mac) |
 | **"Failed to connect"** | Hold BOOT button during upload |
 | **"Canvas->begin() FAILED"** | Check PSRAM is set to **Enabled** in Tools menu |
-| **Upload hangs at "Connecting..."** | Press RST, then retry with BOOT button held |
-| **Display stays black** | Press RST button; verify PSRAM setting |
+| **Upload hangs at "Connecting..."** | Press RST/PWR, then retry with BOOT button held |
+| **Display stays black** | Press RST/PWR button; verify PSRAM setting |
 | **"Library not found"** | Check spelling; install via Library Manager |
 | **Serial Monitor shows garbage** | Set baud rate to 115200, not 9600 |
 | **Touch doesn't work** | Restart board; SPD2010 needs a few seconds after boot |
