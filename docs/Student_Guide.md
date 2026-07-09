@@ -52,7 +52,7 @@ Follow the [Build Guide](Build_Guide.md) to:
    - Home latitude / longitude (default: Fort Wayne, IN)
    - Timezone offset from UTC (e.g., `-5` for EST)
 4. **Save.** The device reconnects to your WiFi and the radar appears.
-5. After connection, browse to `http://flightradar.local/` on the same network for full settings.
+5. After connection, browse to ~~http://flightradar.local/~~ `http://ip-address` (shown in Serial Monitor) on the same network for full settings.
 
 ## Touch Gestures
 
@@ -110,7 +110,7 @@ Everything from the on-screen settings plus:
 
 | Setting | Options | What it does |
 | --- | --- | --- |
-| Theme | Green Phosphor / Amber CRT | Color palette |
+| Theme | Green Phosphorus / Amber CRT / Deep Blue / Crimson / Noir | Color palette |
 | Range | 5 / 10 / 25 / 50 (units) | Outer ring radius |
 | Units | Native (nm/kt) / Miles (mi/mph) / Metric (km/kmh) | Display units |
 | Time | 12h / 24h | Clock format |
