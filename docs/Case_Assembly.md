@@ -44,7 +44,7 @@ Always flash and test the board BEFORE mounting in the case:
 | Issue | Solution |
 | ------- | ---------- |
 | Screw holes don't line up | Check board orientation - board only fits one way |
-| Back of case isn't staying on | Make sure to push it until it clicks into place
+| Back of case isn't staying on | Make sure to push it until it clicks into place |
 
 ## 3D Print Settings
 
