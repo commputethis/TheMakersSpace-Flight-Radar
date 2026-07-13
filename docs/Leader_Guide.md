@@ -66,7 +66,7 @@ Open the sketch in Arduino IDE. Point out the **five files**:
 
 - `FlightRadar.ino` — main logic in three parts
 - `board_config.h` — *every pin definition* lives here. "If we wanted to support a different board, we'd add another `#elif` block and nothing else changes."
-- `font_config.h — this is where we control font sizes
+- `font_config.h` — this is where we control font sizes
 - `themes.h` — color palettes
 - `aircraft_types.h` — ICAO code lookup
 
