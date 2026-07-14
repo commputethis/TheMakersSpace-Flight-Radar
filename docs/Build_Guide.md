@@ -82,7 +82,7 @@ In the Library Manager search box, install each of these:
 
 | Library | Version | Author |
 | --------- | --------- | -------- |
-| `Arduino_GFX_Library` | 1.5.7 or higher | moononournation |
+| `GFX Library for Arduino` | 1.5.7 or higher | moon on our nation |
 | `ArduinoJson` | 7.x | Benoit Blanchon |
 | `WiFiManager` | 2.0.x | tzapu |
 | `SensorLib` | Latest | Lewis He |
@@ -187,7 +187,7 @@ Hard resetting via RTS pin...
 
 1. Open **Tools → Serial Monitor** (or press Ctrl+Shift+M / Cmd+Shift+M)
 2. Set baud rate to **115200** (bottom right dropdown)
-3. Press the **RST** button on your board
+3. Press the **RST** (or **PWR**)button on your board
 
 You should see:
 

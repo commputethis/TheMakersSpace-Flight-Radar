@@ -63,7 +63,7 @@ The core code (FlightRadar.ino) remains unchanged - only pin definitions differ.
 - Arduino IDE or PlatformIO
 - ESP32 board support package
 - Required libraries:
-  - Arduino_GFX
+  - GFX Library for Arduino
   - ArduinoJson
   - QMI8658 (for IMU support)
   - Preferences (built-in)
