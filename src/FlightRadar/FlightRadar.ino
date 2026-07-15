@@ -1694,6 +1694,35 @@ void renderStats() {
             (unsigned long)(uptimeSec / 3600),
             (unsigned long)((uptimeSec / 60) % 60));
 
+  // Network info
+  y += 26;
+  g->setTextColor(th.textPrimary);
+  g->setCursor(SCREEN_CX - 90, y);
+  g->print("Network:");
+  y += 16;
+  g->setTextColor(th.textSecondary);
+  g->setCursor(SCREEN_CX - 90, y);
+  if (wifiConnected) {
+    String ssid = WiFi.SSID();
+    if (ssid.length() > 15) ssid = ssid.substring(0, 12) + "...";
+    g->printf(" %s", ssid.c_str());
+  } else {
+    g->print(" Not connected");
+  }
+
+  y += 22;
+  g->setTextColor(th.textPrimary);
+  g->setCursor(SCREEN_CX - 90, y);
+  g->print("IP Address:");
+  y += 16;
+  g->setTextColor(th.textSecondary);
+  g->setCursor(SCREEN_CX - 90, y);
+  if (wifiConnected) {
+    g->printf(" %s", WiFi.localIP().toString().c_str());
+  } else {
+    g->print(" ---.---.---.---");
+  }
+
   g->setTextSize(TXT_SMALL);
   g->setCursor(SCREEN_CX - 75, LCD_HEIGHT - 30);
 //  g->print("Swipe right to go back");
