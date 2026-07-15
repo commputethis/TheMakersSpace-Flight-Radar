@@ -2153,6 +2153,7 @@ void initWiFiAndPortal() {
   buildApSsid();
 
   WiFiManager wm;
+  wm.setClass("invert");                   // Enables dark mode on the captive portal
   wm.setConfigPortalTimeout(300);          // close portal after 5 min
   wm.setHostname(MDNS_HOSTNAME);
   wm.setBreakAfterConfig(true);
