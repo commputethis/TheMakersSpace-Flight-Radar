@@ -91,16 +91,6 @@ On first boot, the device creates a WiFi access point named **"FlightRadar-Setup
 - **Range**: Detection radius (10-100+ miles)
 - **Audio**: Enable/disable audio alerts
 
-### ADS-B Receiver Setup
-
-This project requires a running ADS-B receiver with a JSON API endpoint. Compatible receivers include:
-
-- **dump1090-fa** (FlightAware)
-- **readsb** (Mode S decoder)
-- **tar1090**
-
-Ensure your receiver exposes the `/data/aircraft.json` endpoint and is accessible on your network.
-
 ## Usage
 
 ### Main Display
