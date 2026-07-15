@@ -2252,141 +2252,6 @@ void initOTA() {
 // IP). The page renders the current settings, lets you change them,
 // and saves to NVS.  PORTAL_HTML lives in flash to keep RAM free.
 // ================================================================
-const char THEME_GREEN_CSS[] PROGMEM = R"rawliteral(
-  :root {
-    --bg: #0a0f0a;
-    --fg: #33ff33;
-    --accent: #1a331a;
-    --input-bg: #0f1a0f;
-    --input-border: #33ff33;
-    --button-bg: #33ff33;
-    --button-fg: #0a0f0a;
-    --link: #66ff66;
-  }
-  body::after {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(0,0,0,0.15),
-      rgba(0,0,0,0.15) 1px,
-      transparent 1px,
-      transparent 2px
-    );
-    pointer-events: none;
-    z-index: 999;
-  }
-)rawliteral";
-
-const char THEME_AMBER_CSS[] PROGMEM = R"rawliteral(
-  :root {
-    --bg: #1a0f00;
-    --fg: #ffb000;
-    --accent: #331a00;
-    --input-bg: #1a0f00;
-    --input-border: #ffb000;
-    --button-bg: #ffb000;
-    --button-fg: #1a0f00;
-    --link: #ffcc33;
-  }
-  body::after {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(0,0,0,0.15),
-      rgba(0,0,0,0.15) 1px,
-      transparent 1px,
-      transparent 2px
-    );
-    pointer-events: none;
-    z-index: 999;
-  }
-)rawliteral";
-
-const char THEME_BLUE_CSS[] PROGMEM = R"rawliteral(
- :root {
-   --bg: #000510;
-   --fg: #00ffff;
-   --accent: #001a33;
-   --input-bg: #000a1a;
-   --input-border: #00ffff;
-   --button-bg: #00ffff;
-   --button-fg: #000510;
-   --link: #66ffff;
- }
- body::after {
-   content: "";
-   position: fixed;
-   top: 0; left: 0; width: 100%; height: 100%;
-   background: repeating-linear-gradient(
-     0deg,
-     rgba(0,0,0,0.15),
-     rgba(0,0,0,0.15) 1px,
-     transparent 1px,
-     transparent 2px
-   );
-   pointer-events: none;
-   z-index: 999;
- }
-)rawliteral";
-
-const char THEME_RED_CSS[] PROGMEM = R"rawliteral(
- :root {
-   --bg: #1a0500;
-   --fg: #ff3333;
-   --accent: #330a00;
-   --input-bg: #1a0500;
-   --input-border: #ff3333;
-   --button-bg: #ff3333;
-   --button-fg: #1a0500;
-   --link: #ff6666;
- }
- body::after {
-   content: "";
-   position: fixed;
-   top: 0; left: 0; width: 100%; height: 100%;
-   background: repeating-linear-gradient(
-     0deg,
-     rgba(0,0,0,0.15),
-     rgba(0,0,0,0.15) 1px,
-     transparent 1px,
-     transparent 2px
-   );
-   pointer-events: none;
-   z-index: 999;
- }
-)rawliteral";
-
-const char THEME_GRAY_CSS[] PROGMEM = R"rawliteral(
- :root {
-   --bg: #0a0a0a;
-   --fg: #ffffff;
-   --accent: #1a1a1a;
-   --input-bg: #0f0f0f;
-   --input-border: #ffffff;
-   --button-bg: #ffffff;
-   --button-fg: #0a0a0a;
-   --link: #cccccc;
- }
- body::after {
-   content: "";
-   position: fixed;
-   top: 0; left: 0; width: 100%; height: 100%;
-   background: repeating-linear-gradient(
-     0deg,
-     rgba(0,0,0,0.15),
-     rgba(0,0,0,0.15) 1px,
-     transparent 1px,
-     transparent 2px
-   );
-   pointer-events: none;
-   z-index: 999;
- }
-)rawliteral";
-
 static const char PORTAL_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -2492,30 +2357,26 @@ static String renderPortalPage() {
     if (i == settings.theme_idx) themeOpts += " selected";
     themeOpts += ">" + String(THEMES[i]->name) + "</option>";
   }
+  
   // Range options
   static const char* RANGE_LABELS[4] = {"5", "10", "25", "50"};
   String rangeOpts = buildOpts(RANGE_LABELS, 4, settings.range_idx);
+  
   // Units options
   static const char* UNIT_LABELS[3] = {"Native (nm/kt)", "Miles (mi/mph)", "Metric (km/kmh)"};
   String unitOpts = buildOpts(UNIT_LABELS, 3, settings.unit_mode);
 
+  // Calculate uptime
   uint32_t up = millis() / 1000;
   char uptBuf[24];
   snprintf(uptBuf, sizeof(uptBuf), "%luh %lum",
            (unsigned long)(up / 3600), (unsigned long)((up / 60) % 60));
 
-  // Theme CSS selection for all 5 themes
-  const char* themeCss;
-  switch (settings.theme_idx) {
-    case THEME_AMBER:     themeCss = THEME_AMBER_CSS; break;
-    case THEME_DEEP_BLUE: themeCss = THEME_BLUE_CSS;  break;
-    case THEME_CRIMSON:   themeCss = THEME_RED_CSS;   break;
-    case THEME_NOIR:      themeCss = THEME_GRAY_CSS;  break;
-    case THEME_GREEN:
-    default:              themeCss = THEME_GREEN_CSS; break;
-  }
+  // This pulls the appropriate CSS from THEME_CSS array based on selected theme
+  const char* themeCss = (const char*)pgm_read_ptr(&THEME_CSS[settings.theme_idx]);
   html.replace("{{THEME_CSS}}", themeCss);
 
+  // Replace all placeholders in HTML template
   html.replace("{{HOSTNAME}}",   String(MDNS_HOSTNAME) + ".local");
   html.replace("{{IP}}",         WiFi.localIP().toString());
   html.replace("{{UPT}}",        uptBuf);
@@ -2529,11 +2390,11 @@ static String renderPortalPage() {
   html.replace("{{H24}}",        chk(settings.use_24h));
   html.replace("{{DST}}",        chk(settings.observe_dst));
   html.replace("{{MINALT}}",     String(settings.min_altitude_ft));
-  html.replace("{{IDLE}}",       String(settings.idle_timeout_sec));
   html.replace("{{AUDIO}}",      chk(settings.audio_enabled));
   html.replace("{{DEMO}}",       chk(settings.demo_mode));
   html.replace("{{LOG}}",        chk(settings.log_to_fs));
   html.replace("{{OTAPW}}",      String(settings.ota_password));
+  
   return html;
 }
 
