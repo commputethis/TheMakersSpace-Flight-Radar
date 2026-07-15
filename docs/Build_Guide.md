@@ -94,7 +94,7 @@ In the Library Manager search box, install each of these:
 - If you see multiple results, pick the one with the matching author
 - Some libraries may already be installed— that's fine!
 
-**Close and restart Arduino IDE** after installing libraries.
+Shouldn't be needed, but some resources online recommend **Closing and Reopening Arduino IDE** after installing libraries.
 
 ---
 
@@ -122,6 +122,10 @@ Go to **Tools** menu and set **exactly** these options:
 
 ``` text
 Board:                Wavesheare ESP32-S3-Touch-LCD-1.46
+```
+![Board Selection](./images/board.png)
+
+``` text
 USB CDC On Boot:      Enabled
 Events Run On:        Core 0
 Flash Mode:           QIO 120MHz
@@ -132,7 +136,11 @@ Upload Speed:         921600
 USB Mode:             Hardware CDC and JTAG
 ```
 
+![Board Settings](./images/board_settings.png)
+
 **⚠️ Critical:** PSRAM must be set to **"Enabled"** (not "Disabled"). The display framebuffer requires PSRAM. If PSRAM is disabled, the screen will stay black.
+
+**⚠️ Critical:** Partition Scheme **MUST** have **"SPIFFS"**
 
 ### Select the Port
 
@@ -145,6 +153,7 @@ Go to **Tools → Port** and select:
 **If no port appears:**
 
 - Try a different USB cable (must be data cable, not charge-only)
+- Try holding the **BOOT** button and press the **PWR/RST** button (release both buttons after pressing the PWR/RST button)
 - Install CP210x USB driver (Windows): [https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers)
 - On Mac, wait 30 seconds after plugging in—ports take time to appear
 
@@ -224,10 +233,11 @@ If you see this, **success!** Proceed to WiFi configuration in the [Student Guid
 | Problem | Solution |
 | --------- | ---------- |
 | **No port appears** | Try different USB cable; install CP210x driver (Windows); wait 30s (Mac) |
-| **"Failed to connect"** | Hold BOOT button during upload |
+| **No port appears** | With **BOOT** button held, **press RST/PWR** |
+| **"Failed to connect"** | Hold **BOOT** button during upload |
 | **"Canvas->begin() FAILED"** | Check PSRAM is set to **Enabled** in Tools menu |
-| **Upload hangs at "Connecting..."** | Press RST/PWR, then retry with BOOT button held |
-| **Display stays black** | Press RST/PWR button; verify PSRAM setting |
+| **Upload hangs at "Connecting..."** | With **BOOT** button held, **press RST/PWR** |
+| **Display stays black** | Press **RST/PWR** button; verify PSRAM setting |
 | **"Library not found"** | Check spelling; install via Library Manager |
 | **Serial Monitor shows garbage** | Set baud rate to 115200, not 9600 |
 | **Touch doesn't work** | Restart board; SPD2010 needs a few seconds after boot |
